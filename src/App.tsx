@@ -110,10 +110,10 @@ function App() {
           {createSlider('Villain Bet', 'villainBet', 50, 1000, 50)}
           {createSlider('Villain Raise', 'villainRaise', 50, 1000, 50)}
 
-          <Typography variant="h6" sx={{ px: 2, mb: 2, mt: 2 }}>Win Probabilities</Typography>
-          {createSlider('Initial Hero Win Probability', 'pwinInitial', 0, 1, 0.05)}
-          {createSlider('Hero Win Prob. After Villain Bet', 'pwinAfterVillainBet', 0, 1, 0.05)}
-          {createSlider('Hero Win Prob. After Villain Raise', 'pwinAfterVillainRaise', 0, 1, 0.05)}
+          <Typography variant="h6" sx={{ px: 2, mb: 2, mt: 2 }}>Equity</Typography>
+          {createSlider('Initial Hero Equity', 'pwinInitial', 0, 1, 0.05)}
+          {createSlider('Hero Equity After Villain Bet', 'pwinAfterVillainBet', 0, 1, 0.05)}
+          {createSlider('Hero Equity After Villain Raise', 'pwinAfterVillainRaise', 0, 1, 0.05)}
         </Box>
       </Drawer>
 
