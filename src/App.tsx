@@ -35,6 +35,40 @@ function App() {
     setSolution(solveGame(newMatrix));
   }, [gameState]);
 
+  const calculateBetAmounts = () => {
+    const initialPot = gameState.stack * gameState.potPercent / 100;
+    
+    // Hero bet - direct pot fraction
+    const heroBetSize = initialPot * gameState.heroBet;
+    
+    // Villain bet - direct pot fraction
+    const villainBetSize = initialPot * gameState.villainBet;
+    
+    // Hero raise after villain bet
+    // First call villain's bet, then add raise based on new pot
+    const potAfterVillainBet = initialPot + 2 * villainBetSize;
+    const heroRaiseSize = villainBetSize + (potAfterVillainBet * gameState.heroRaise);
+    
+    // Villain raise after hero bet
+    // First call hero's bet, then add raise based on new pot
+    const potAfterHeroBet = initialPot + 2 * heroBetSize;
+    const villainRaiseSize = heroBetSize + (potAfterHeroBet * gameState.villainRaise);
+    
+    // Hero 3bet - first call villain's raise, then add raise based on new pot
+    const potAfterVillainRaise = potAfterHeroBet + 2 * (villainRaiseSize - heroBetSize);
+    const hero3betSize = villainRaiseSize + (potAfterVillainRaise * gameState.hero3bet);
+
+    return {
+      heroBet: Math.round(heroBetSize),
+      villainBet: Math.round(villainBetSize),
+      heroRaise: Math.round(heroRaiseSize),
+      villainRaise: Math.round(villainRaiseSize),
+      hero3bet: Math.round(hero3betSize)
+    };
+  };
+
+  const amounts = calculateBetAmounts();
+
   const createSlider = (
     label: string,
     key: keyof Omit<GameState, 'useLogUtility'>,
@@ -109,8 +143,8 @@ function App() {
           },
         }}
       >
-        <Box sx={{ overflowX: 'hidden' }}>
-          <Box sx={{ px: 2, mb: 2, mt: 2 }}>
+        <Box sx={{ overflow: 'auto', mt: 2 }}>
+          <Box sx={{ px: 2, mb: 2 }}>
             <FormControlLabel
               control={
                 <Checkbox
@@ -122,17 +156,17 @@ function App() {
             />
           </Box>
 
-          <Divider sx={{ my: 1 }} />
+          <Divider sx={{ my: 2 }} />
 
-          <Typography variant="h6" sx={{ px: 2, mt: 2, mb: 1 }}>Stack and Pot</Typography>
-          {createSlider('Stack Size', 'stack', 10, 200, 10,
+          <Typography variant="h6" sx={{ px: 2, mb: 1 }}>Stack and Pot</Typography>
+          {createSlider('Stack Size', 'stack', 50, 200, 10,
             value => `${value} BB`)}
-          {createSlider('Initial Pot', 'potPercent', 5, 200, 5,
+          {createSlider('Initial Pot', 'potPercent', 5, 50, 5,
             value => `${value}% (${(gameState.stack * value / 100).toFixed(1)} BB)`)}
 
-          <Divider sx={{ my: 1 }} />
+          <Divider sx={{ my: 2 }} />
 
-          <Typography variant="h6" sx={{ px: 2, mt: 2, mb: 1 }}>Hero Equity</Typography>
+          <Typography variant="h6" sx={{ px: 2, mb: 1 }}>Hero Equity</Typography>
           {createSlider('Initial Equity', 'pwinInitial', 0, 1, 0.05,
             value => `${(value * 100).toFixed(0)}%`)}
           {createSlider('Equity After Villain Bet', 'pwinAfterVillainBet', 0, 1, 0.05,
@@ -140,31 +174,35 @@ function App() {
           {createSlider('Equity After Villain Raise', 'pwinAfterVillainRaise', 0, 1, 0.05,
             value => `${(value * 100).toFixed(0)}%`)}
             
-          <Divider sx={{ my: 1 }} />
+          <Divider sx={{ my: 2 }} />
 
-          <Typography variant="h6" sx={{ px: 2, mt: 2, mb: 1 }}>Actions</Typography>
+          <Typography variant="h6" sx={{ px: 2, mb: 1 }}>Actions</Typography>
           {createSlider('Hero Bet (pot %)', 'heroBet', 0.1, 2, 0.1,
-            value => `${(value * 100).toFixed(0)}%`)}
+            value => `${(value * 100).toFixed(0)}% (${amounts.heroBet} BB)`)}
           {createSlider('Hero Raise (pot %)', 'heroRaise', 0.1, 2, 0.1,
-            value => `${(value * 100).toFixed(0)}%`)}
+            value => `${(value * 100).toFixed(0)}% (${amounts.heroRaise} BB)`)}
           {createSlider('Hero 3-Bet (pot %)', 'hero3bet', 0.1, 2, 0.1,
-            value => `${(value * 100).toFixed(0)}%`)}
+            value => `${(value * 100).toFixed(0)}% (${amounts.hero3bet} BB)`)}
           {createSlider('Villain Bet (pot %)', 'villainBet', 0.1, 2, 0.1,
-            value => `${(value * 100).toFixed(0)}%`)}
+            value => `${(value * 100).toFixed(0)}% (${amounts.villainBet} BB)`)}
           {createSlider('Villain Raise (pot %)', 'villainRaise', 0.1, 2, 0.1,
-            value => `${(value * 100).toFixed(0)}%`)}
-
+            value => `${(value * 100).toFixed(0)}% (${amounts.villainRaise} BB)`)}
 
         </Box>
       </Drawer>
 
       <Box component="main" sx={{ flexGrow: 1, p: 2 }}>
         <Typography variant="h4" gutterBottom>
-          Poker Game Matrix Analysis
+          River Analysis
         </Typography>
 
         <Box sx={{ mb: 3 }}>
-          <Typography variant="h6" gutterBottom>Game Matrix</Typography>
+          {solution && (
+            <Typography variant="h6" gutterBottom>
+              Game Value: {solution.utility.toFixed(2)}
+            </Typography>
+          )}
+          
           <Plot
             data={[
               {
@@ -236,11 +274,6 @@ function App() {
           </Box>
         )}
 
-        {solution && (
-          <Typography variant="h6" gutterBottom>
-            Game Value: {solution.utility.toFixed(2)}
-          </Typography>
-        )}
       </Box>
     </Box>
   );
