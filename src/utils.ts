@@ -4,9 +4,19 @@ import { create, all } from 'mathjs';
 
 const math = create(all);
 
+function calculateUtility(amount: number, useLogUtility: boolean): number {
+  if (useLogUtility) {
+    // Add 1 to avoid log(0) and make small losses less punishing
+    return Math.log(Math.max(amount + 1, 0.01));
+  }
+  return amount;
+}
+
 export function calculateMatrix(state: GameState) {
   const {
-    pot,
+    useLogUtility,
+    stack,
+    potPercent,
     heroBet,
     heroRaise,
     hero3bet,
@@ -17,60 +27,105 @@ export function calculateMatrix(state: GameState) {
     pwinAfterVillainRaise
   } = state;
 
+  // Calculate initial pot in BB
+  const initialPot = stack * potPercent / 100;
+
+  // Helper function to calculate sequential bet sizes
+  const calculateBetSequence = (pot: number, ...fractions: number[]) => {
+    let currentPot = pot;
+    let totalBet = 0;
+
+    return fractions.map(fraction => {
+      const betSize = currentPot * fraction;
+      totalBet += betSize;
+      currentPot += 2 * betSize; // Add bet and call to pot
+      return totalBet;
+    });
+  };
+
   const matrix = Array(index.length).fill(0).map(() => Array(columns.length).fill(0));
 
+  // Helper function to calculate payoffs ensuring zero-sum property
+  const calculatePayoff = (heroAmount: number, villainAmount: number) => {
+    const heroUtility = calculateUtility(heroAmount, useLogUtility);
+    const villainUtility = calculateUtility(villainAmount, useLogUtility);
+    return heroUtility - villainUtility;
+  };
+
   // Helper function to set matrix values
-  const setValues = (rows: Index[], cols: Column[], value: number) => {
+  const setValues = (rows: Index[], cols: Column[], heroValue: number, villainValue: number) => {
     rows.forEach(row => {
       cols.forEach(col => {
         const rowIndex = index.indexOf(row);
         const colIndex = columns.indexOf(col);
         if (rowIndex !== -1 && colIndex !== -1) {
-          matrix[rowIndex][colIndex] = value;
+          matrix[rowIndex][colIndex] = calculatePayoff(heroValue, villainValue);
         }
       });
     });
   };
 
+  // Calculate bet sequences
+  const [heroBetAmount] = calculateBetSequence(initialPot, heroBet);
+  const [villainBetAmount] = calculateBetSequence(initialPot, villainBet);
+  const [heroRaiseAfterCall] = calculateBetSequence(initialPot + 2 * villainBetAmount, heroRaise);
+  const [villainRaiseAmount] = calculateBetSequence(initialPot + 2 * heroBetAmount, villainRaise);
+  const [hero3betAmount] = calculateBetSequence(
+    initialPot + 2 * heroBetAmount + 2 * villainRaiseAmount,
+    hero3bet
+  );
+
   // Initial check situations
   setValues(
     ['check-fold', 'check-call', 'check-raise'],
     ['check/fold', 'check/call', 'check/raise-fold', 'check/raise-call'],
-    pwinInitial * pot
+    pwinInitial * initialPot,
+    (1 - pwinInitial) * initialPot
   );
 
   // Check against bet scenarios
-  setValues(['check-fold'], ['bet-fold/fold', 'bet-fold/call', 'bet-fold/raise-fold', 'bet-fold/raise-call'], 0);
+  setValues(['check-fold'], ['bet-fold/fold', 'bet-fold/call', 'bet-fold/raise-fold', 'bet-fold/raise-call'],
+    0, initialPot + villainBetAmount);
   setValues(['check-call'], ['bet-fold/fold', 'bet-fold/call', 'bet-fold/raise-fold', 'bet-fold/raise-call'],
-    pwinAfterVillainBet * (pot + villainBet) - (1 - pwinAfterVillainBet) * villainBet);
+    pwinAfterVillainBet * (initialPot + villainBetAmount) - (1 - pwinAfterVillainBet) * villainBetAmount,
+    (1 - pwinAfterVillainBet) * (initialPot + villainBetAmount) - pwinAfterVillainBet * villainBetAmount);
   setValues(['check-raise'], ['bet-fold/fold', 'bet-fold/call', 'bet-fold/raise-fold', 'bet-fold/raise-call'],
-    pot + villainBet);
+    initialPot + villainBetAmount, 0);
 
-  setValues(['check-fold'], ['bet-call/fold', 'bet-call/call', 'bet-call/raise-fold', 'bet-call/raise-call'], 0);
+  setValues(['check-fold'], ['bet-call/fold', 'bet-call/call', 'bet-call/raise-fold', 'bet-call/raise-call'],
+    0, initialPot + villainBetAmount);
   setValues(['check-call'], ['bet-call/fold', 'bet-call/call', 'bet-call/raise-fold', 'bet-call/raise-call'],
-    pwinAfterVillainBet * (pot + villainBet) - (1 - pwinAfterVillainBet) * villainBet);
+    pwinAfterVillainBet * (initialPot + villainBetAmount) - (1 - pwinAfterVillainBet) * villainBetAmount,
+    (1 - pwinAfterVillainBet) * (initialPot + villainBetAmount) - pwinAfterVillainBet * villainBetAmount);
   setValues(['check-raise'], ['bet-call/fold', 'bet-call/call', 'bet-call/raise-fold', 'bet-call/raise-call'],
-    pwinAfterVillainBet * (pot + villainBet + heroRaise) - (1 - pwinAfterVillainBet) * (villainBet + heroRaise));
+    pwinAfterVillainBet * (initialPot + villainBetAmount + heroRaiseAfterCall) - (1 - pwinAfterVillainBet) * heroRaiseAfterCall,
+    (1 - pwinAfterVillainBet) * (initialPot + villainBetAmount + heroRaiseAfterCall) - pwinAfterVillainBet * heroRaiseAfterCall);
 
   // Bet scenarios
-  setValues(['bet-fold', 'bet-call', 'bet-3bet'], ['check/fold', 'bet-fold/fold', 'bet-call/fold'], pot);
+  setValues(['bet-fold', 'bet-call', 'bet-3bet'], ['check/fold', 'bet-fold/fold', 'bet-call/fold'],
+    initialPot, 0);
   setValues(['bet-fold', 'bet-call', 'bet-3bet'], ['check/call', 'bet-fold/call', 'bet-call/call'],
-    pwinInitial * (pot + heroBet) - (1 - pwinInitial) * heroBet);
+    pwinInitial * (initialPot + heroBetAmount) - (1 - pwinInitial) * heroBetAmount,
+    (1 - pwinInitial) * (initialPot + heroBetAmount) - pwinInitial * heroBetAmount);
 
-  setValues(['bet-fold'], ['check/raise-fold', 'bet-fold/raise-fold', 'bet-call/raise-fold'], -heroBet);
+  setValues(['bet-fold'], ['check/raise-fold', 'bet-fold/raise-fold', 'bet-call/raise-fold'],
+    -heroBetAmount, initialPot + heroBetAmount);
   setValues(['bet-call'], ['check/raise-fold', 'bet-fold/raise-fold', 'bet-call/raise-fold'],
-    pwinAfterVillainRaise * (pot + heroBet + villainRaise) - (1 - pwinAfterVillainRaise) * (heroBet + villainRaise));
+    pwinAfterVillainRaise * (initialPot + heroBetAmount + villainRaiseAmount) - (1 - pwinAfterVillainRaise) * (heroBetAmount + villainRaiseAmount),
+    (1 - pwinAfterVillainRaise) * (initialPot + heroBetAmount + villainRaiseAmount) - pwinAfterVillainRaise * (heroBetAmount + villainRaiseAmount));
   setValues(['bet-3bet'], ['check/raise-fold', 'bet-fold/raise-fold', 'bet-call/raise-fold'],
-    pot + heroBet + villainRaise);
+    initialPot + heroBetAmount + villainRaiseAmount, 0);
 
-  setValues(['bet-fold'], ['check/raise-call', 'bet-fold/raise-call', 'bet-call/raise-call'], -heroBet);
+  setValues(['bet-fold'], ['check/raise-call', 'bet-fold/raise-call', 'bet-call/raise-call'],
+    -heroBetAmount, initialPot + heroBetAmount);
   setValues(['bet-call'], ['check/raise-call', 'bet-fold/raise-call', 'bet-call/raise-call'],
-    pwinAfterVillainRaise * (pot + heroBet + villainRaise) - (1 - pwinAfterVillainRaise) * (heroBet + villainRaise));
+    pwinAfterVillainRaise * (initialPot + heroBetAmount + villainRaiseAmount) - (1 - pwinAfterVillainRaise) * (heroBetAmount + villainRaiseAmount),
+    (1 - pwinAfterVillainRaise) * (initialPot + heroBetAmount + villainRaiseAmount) - pwinAfterVillainRaise * (heroBetAmount + villainRaiseAmount));
   setValues(['bet-3bet'], ['check/raise-call', 'bet-fold/raise-call', 'bet-call/raise-call'],
-    pwinAfterVillainRaise * (pot + heroBet + villainRaise + hero3bet) - (1 - pwinAfterVillainRaise) * (heroBet + villainRaise + hero3bet));
+    pwinAfterVillainRaise * (initialPot + heroBetAmount + villainRaiseAmount + hero3betAmount) - (1 - pwinAfterVillainRaise) * (heroBetAmount + villainRaiseAmount + hero3betAmount),
+    (1 - pwinAfterVillainRaise) * (initialPot + heroBetAmount + villainRaiseAmount + hero3betAmount) - pwinAfterVillainRaise * (heroBetAmount + villainRaiseAmount + hero3betAmount));
 
-  // Make it zero-sum by subtracting half the pot
-  return matrix.map(row => row.map(value => value - pot / 2));
+  return matrix;
 }
 
 export function solveGame(matrix: number[][]) {
