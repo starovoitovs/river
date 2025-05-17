@@ -4,10 +4,10 @@ import { create, all } from 'mathjs';
 
 const math = create(all);
 
-function calculateUtility(amount: number, useLogUtility: boolean): number {
+function calculateUtility(amount: number, useLogUtility: boolean, stack: number): number {
   if (useLogUtility) {
-    // Add 1 to avoid log(0) and make small losses less punishing
-    return Math.log(Math.max(amount + 1, 0.01));
+    // Add stack to avoid log(0) and make small losses less punishing
+    return Math.log(Math.max(amount + stack, 0.01));
   }
   return amount;
 }
@@ -47,8 +47,8 @@ export function calculateMatrix(state: GameState) {
 
   // Helper function to calculate payoffs ensuring zero-sum property
   const calculatePayoff = (heroAmount: number, villainAmount: number) => {
-    const heroUtility = calculateUtility(heroAmount, useLogUtility);
-    const villainUtility = calculateUtility(villainAmount, useLogUtility);
+    const heroUtility = calculateUtility(heroAmount, useLogUtility, stack);
+    const villainUtility = calculateUtility(villainAmount, useLogUtility, stack);
     return heroUtility - villainUtility;
   };
 
