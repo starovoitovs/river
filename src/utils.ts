@@ -4,8 +4,8 @@ import { create, all } from 'mathjs';
 
 const math = create(all);
 
-function calculateUtility(amount: number, useLogUtility: boolean, stack: number): number {
-  if (useLogUtility) {
+function calculateUtility(amount: number, useLogUtility: 'linear' | 'logarithmic', stack: number): number {
+  if (useLogUtility === 'logarithmic') {
     // Add stack to avoid log(0) and make small losses less punishing
     return Math.log(Math.max(amount + stack, 0.01));
   }

@@ -15,7 +15,7 @@ The game matrix represents:
 - X-axis: Villain's actions `(action1-action2 if Hero checks first/action1-action2 if Hero bets first)`
 - Cell entries: payoff/log-payoff for Hero's perspective in the units of BB/log-BB
 
-Each player aims to maximize their own value. The Nash Equilibrium (NE) represents a stable state where neither player can improve by unilaterally changing their strategy. The NE can be a pure strategy (if a saddlepoint exists) or a mixed strategy (otherwise). A bar plot visualizes the (potentially mixed) equilibrium strategies.
+Each player aims to maximize their own value. The Nash Equilibrium (NE) represents a stable state where neither player can improve by unilaterally changing their strategy. The NE can be a pure strategy (if a saddlepoint exists) or a mixed strategy (otherwise). The bar plots visualize the (potentially mixed) equilibrium strategies.
 
 *   **Linear Payoff:** The game is constant-sum (effectively zero-sum). Hero maximizes Hero's payoff (Y-axis), while Villain simultaneously minimizes Hero's payoff (X-axis). The `initial pot/2` adjustment simplifies the zero-sum analysis.
 *   **Logarithmic Payoff:** The game becomes non-constant-sum.
@@ -25,8 +25,6 @@ We approximate the Nash Equilibrium using fictitious play, as in the non-constan
 ## Configuration Options
 
 ### 1. Payoff Type
-
-See [discussion below](#advanced-considerations).
 
 #### Linear Payoff
 - Suitable for cash games with deep stacks
@@ -39,6 +37,8 @@ See [discussion below](#advanced-considerations).
 - Based on Kelly criterion for bankroll management
 - Optimizes long-term capital growth rate
 - More conservative as bankroll decreases
+
+See [detailed discussion below](#advanced-considerations).
 
 ### 2. Stack and Pot Settings
 - **Stack Size**: Your current stack before the street (before river in our case)
@@ -55,7 +55,7 @@ Input your range equity estimates based on:
 These estimates are basically universal knowledge, so that both Hero and Villain have the same opinion about these probabilities.
 
 ### 4. Bet Sizing
-Specify anticipated bet sizes as pot percentages. The tool shows total bet amounts in brackets.
+Specify anticipated bet sizes as pot percentages. The amounts in brackets are the total bet amounts after the respective action.
 
 Example calculation:
 ```

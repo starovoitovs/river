@@ -1,5 +1,5 @@
 export interface GameState {
-  useLogUtility: boolean;
+  useLogUtility: 'linear' | 'logarithmic';
   stack: number;          // Stack size in BB
   potPercent: number;     // Pot as percentage of stack
   heroBet: number;        // Bet sizes as fractions of current pot

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Slider, Typography, Box, Drawer, Checkbox, FormControlLabel, Divider, Toolbar, IconButton } from '@mui/material';
+import { Slider, Typography, Box, Drawer, Select, MenuItem, Divider, Toolbar, IconButton } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import Plot from 'react-plotly.js';
@@ -12,7 +12,7 @@ const DRAWER_WIDTH = 280;
 export default function Home() {
   const navigate = useNavigate();
   const [gameState, setGameState] = useState<GameState>({
-    useLogUtility: false,
+    useLogUtility: 'linear',
     stack: 100,
     potPercent: 20,
     heroBet: 0.5,
@@ -148,27 +148,24 @@ export default function Home() {
       >
         <Toolbar /> {/* Add spacing for fixed AppBar */}
         <Box sx={{ overflowX: 'hidden' }}>
-          <Box sx={{ px: 2, mb: 1, mt: 1 }}>
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={gameState.useLogUtility}
-                  onChange={(e) => setGameState(prev => ({ ...prev, useLogUtility: e.target.checked }))}
-                />
-              }
-              label={
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  Use Log-payoff
-                  <IconButton
-                    onClick={() => navigate('/help#1-payoff-type')}
-                    size="small"
-                    sx={{ ml: 1 }}
-                  >
-                    <HelpOutlineIcon fontSize="small" />
-                  </IconButton>
-                </Box>
-              }
-            />
+          <Box sx={{ px: 2, mb: 1, mt: 1, display: 'flex', alignItems: 'center' }}>
+            <Typography variant="body1" sx={{ mr: 0, fontWeight: 500 }}>Payoff</Typography>
+            <IconButton
+              onClick={() => navigate('/help#1-payoff-type')}
+              size="small"
+              sx={{ mr: 2 }}
+            >
+              <HelpOutlineIcon fontSize="small" />
+            </IconButton>
+            <Select
+              size="small"
+              value={gameState.useLogUtility}
+              onChange={(e) => setGameState(prev => ({ ...prev, useLogUtility: e.target.value }))}
+              sx={{ minWidth: 120, mr: 1 }}
+            >
+              <MenuItem value="linear">Linear</MenuItem>
+              <MenuItem value="logarithmic">Logarithmic</MenuItem>
+            </Select>
           </Box>
 
           <Divider sx={{ my: 1 }} />
@@ -178,7 +175,6 @@ export default function Home() {
             <IconButton
               onClick={() => navigate('/help#2-stack-and-pot-settings')}
               size="small"
-              sx={{ ml: 1 }}
             >
               <HelpOutlineIcon fontSize="small" />
             </IconButton>
@@ -195,7 +191,6 @@ export default function Home() {
             <IconButton
               onClick={() => navigate('/help#3-hero-equity')}
               size="small"
-              sx={{ ml: 1 }}
             >
               <HelpOutlineIcon fontSize="small" />
             </IconButton>
@@ -214,7 +209,6 @@ export default function Home() {
             <IconButton
               onClick={() => navigate('/help#4-bet-sizing')}
               size="small"
-              sx={{ ml: 1 }}
             >
               <HelpOutlineIcon fontSize="small" />
             </IconButton>
@@ -239,9 +233,8 @@ export default function Home() {
             <Typography variant="body1" sx={{fontWeight: 500}} gutterBottom>
               Game Matrix (Value: {solution.utility.toFixed(2)})
               <IconButton
-                onClick={() => navigate('/help#game-matrix')}
+                onClick={() => navigate('/help#game-matrix-and-strategies')}
                 size="small"
-                sx={{ ml: 1 }}
               >
                 <HelpOutlineIcon fontSize="small" />
               </IconButton>
@@ -274,7 +267,15 @@ export default function Home() {
         {solution && (
           <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 3, mb: 3 }}>
             <Box>
-              <Typography variant="body1" sx={{fontWeight: 500}} gutterBottom>Hero Strategy</Typography>
+              <Typography variant="body1" sx={{fontWeight: 500}} gutterBottom>Hero Strategy
+                <IconButton
+                  onClick={() => navigate('/help#game-matrix-and-strategies')}
+                  size="small"
+                >
+                  <HelpOutlineIcon fontSize="small" />
+                </IconButton>
+              </Typography>
+              
               <Plot
                 data={[
                   {
@@ -297,7 +298,15 @@ export default function Home() {
             </Box>
 
             <Box>
-              <Typography variant="body1" sx={{fontWeight: 500}} gutterBottom>Villain Strategy</Typography>
+              <Typography variant="body1" sx={{fontWeight: 500}} gutterBottom>
+                Villain Strategy
+                <IconButton
+                  onClick={() => navigate('/help#game-matrix-and-strategies')}
+                  size="small"
+                >
+                  <HelpOutlineIcon fontSize="small" />
+                </IconButton>
+              </Typography>
               <Plot
                 data={[
                   {
