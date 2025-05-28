@@ -72,7 +72,7 @@ export function calculateMatrix(state: GameState) {
   // Calculate bet sequences
   const [heroBetAmount] = calculateBetSequence(initialPot, heroBet);
   const [villainBetAmount] = calculateBetSequence(initialPot, villainBet);
-  const [heroRaiseAfterCall] = calculateBetSequence(initialPot + 2 * villainBetAmount, heroRaise);
+  const [heroRaiseAfterBet] = calculateBetSequence(initialPot + 2 * villainBetAmount, heroRaise);
   const [villainRaiseAmount] = calculateBetSequence(initialPot + 2 * heroBetAmount, villainRaise);
   const [hero3betAmount] = calculateBetSequence(
     initialPot + 2 * heroBetAmount + 2 * villainRaiseAmount,
@@ -102,8 +102,8 @@ export function calculateMatrix(state: GameState) {
     pwinAfterVillainBet * (initialPot + villainBetAmount) - (1 - pwinAfterVillainBet) * villainBetAmount,
     (1 - pwinAfterVillainBet) * (initialPot + villainBetAmount) - pwinAfterVillainBet * villainBetAmount);
   setValues(['check-raise'], ['bet-call/fold', 'bet-call/call', 'bet-call/raise-fold', 'bet-call/raise-call'],
-    pwinAfterVillainBet * (initialPot + villainBetAmount + heroRaiseAfterCall) - (1 - pwinAfterVillainBet) * heroRaiseAfterCall,
-    (1 - pwinAfterVillainBet) * (initialPot + villainBetAmount + heroRaiseAfterCall) - pwinAfterVillainBet * heroRaiseAfterCall);
+    pwinAfterVillainBet * (initialPot + villainBetAmount + heroRaiseAfterBet) - (1 - pwinAfterVillainBet) * (villainBetAmount + heroRaiseAfterBet),
+    (1 - pwinAfterVillainBet) * (initialPot + villainBetAmount + heroRaiseAfterBet) - pwinAfterVillainBet * (villainBetAmount + heroRaiseAfterBet));
 
   // Bet scenarios
   setValues(['bet-fold', 'bet-call', 'bet-3bet'], ['check/fold', 'bet-fold/fold', 'bet-call/fold'],
