@@ -18,7 +18,7 @@ The game matrix represents:
 
 Each player aims to maximize their own value. The Nash Equilibrium (NE) represents a stable state where neither player can improve by unilaterally changing their strategy. The NE can be a pure strategy (if a saddlepoint exists) or a mixed strategy (otherwise). The bar plots visualize the (potentially mixed) equilibrium strategies.
 
-*   **Linear Payoff:** The game is constant-sum (effectively zero-sum). Hero maximizes Hero's payoff along Y-axis, while Villain simultaneously maximizes Villain's payoff along X-axis (equivalently, minimizes Hero's payoff in a constant-sum game). The `initial pot/2` adjustment simplifies the zero-sum analysis.
+*   **Linear Payoff:** The game is constant-sum (effectively zero-sum). Hero maximizes Hero's payoff (Y-axis), while Villain simultaneously minimizes Hero's payoff (X-axis). The `initial pot/2` adjustment simplifies the zero-sum analysis.
 *   **Logarithmic Payoff:** The game becomes non-constant-sum.
 
 We approximate the Nash Equilibrium using fictitious play, as in the non-constant-sum games players' individual log-payoff maximization no longer creates a perfectly antagonistic relationship where one's gain is exactly the other's loss.

@@ -8,6 +8,7 @@ import type { GameState } from '../types';
 import { index, columns } from '../types';
 
 const DRAWER_WIDTH = 280;
+const ANNOTATION_THRESHOLD = 0.001; // Threshold for probabilities in mixed strategies so that we display asterisk
 
 export default function Home() {
   const navigate = useNavigate();
@@ -120,18 +121,24 @@ export default function Home() {
 
   const createAnnotations = () => {
     return reversedMatrix.map((row, i) =>
-      row.map((vals, j) => ({
-        x: j,
-        y: i,
-        xref: 'x' as const,
-        yref: 'y' as const,
-        text: `(${vals.hero.toFixed(1)}, ${vals.villain.toFixed(1)})`,
-        showarrow: false,
-        font: {
-          color: 'white',
-          size: 8
-        }
-      }))
+      row.map((vals, j) => {
+        const rowIdx = index.length - 1 - i; // Reverse index since matrix is reversed
+        const isHighProb = solution && solution.row_strategy && solution.col_strategy &&
+          solution.row_strategy[rowIdx] > ANNOTATION_THRESHOLD && solution.col_strategy[j] > ANNOTATION_THRESHOLD;
+        const suffix = isHighProb ? '*' : '';
+        return {
+          x: j,
+          y: i,
+          xref: 'x' as const,
+          yref: 'y' as const,
+          text: `(${vals.hero.toFixed(1)}, ${vals.villain.toFixed(1)})${suffix}`,
+          showarrow: false,
+          font: {
+            color: 'white',
+            size: 8
+          }
+        };
+      })
     ).flat();
   };
 
@@ -255,13 +262,13 @@ export default function Home() {
           <Plot
             data={[
               {
-          z: reversedMatrix.map(row => row.map(vals => vals.hero)), // Color based on hero values
-          x: columns,
-          y: [...index].reverse(),
-          type: 'heatmap',
-          colorscale: 'RdBu',
-          hoverongaps: false,
-          showscale: true
+                z: reversedMatrix.map(row => row.map(vals => vals.hero)), // Color based on hero values
+                x: columns,
+                y: [...index].reverse(),
+                type: 'heatmap',
+                colorscale: 'RdBu',
+                hoverongaps: false,
+                showscale: true,
               }
             ]}
             layout={{
@@ -270,18 +277,21 @@ export default function Home() {
               width: window.innerWidth - DRAWER_WIDTH - 80,
               height: 360, // slightly increased height for more space
               xaxis: { 
-          tickangle: 45,
-          automargin: true,
-          tickfont: { size: 12 },
-          tickvals: columns,
-          ticktext: columns,
-          side: 'bottom'
+                tickangle: 45,
+                automargin: true,
+                tickfont: { size: 12 },
+                tickvals: columns,
+                ticktext: columns,
+                side: 'bottom'
               },
-              yaxis: { autorange: true },
+              yaxis: {
+                autorange: true,
+                tickfont: { size: 12 },
+              },
               margin: { ...commonPlotLayout.margin, b: 100 }, // increase bottom margin for x-axis labels
               annotations: createAnnotations().map(a => ({
           ...a,
-          font: { ...a.font, size: 9 }
+          font: { ...a.font, size: 10 }
               }))
             }}
           />
