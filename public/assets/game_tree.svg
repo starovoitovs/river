@@ -5,39 +5,39 @@
 <!-- level0_label -->
 <g id="node1" class="node">
 <title>level0_label</title>
-<text text-anchor="middle" x="130.3" y="-380.1" font-family="Times,serif" font-size="11.00" fill="gray">START</text>
+<text text-anchor="middle" x="30" y="-380.1" font-family="Times,serif" font-size="9.00">START</text>
 </g>
 <!-- level1_label -->
 <g id="node2" class="node">
 <title>level1_label</title>
-<text text-anchor="middle" x="100.3" y="-286.9" font-family="Times,serif" font-size="11.00" fill="gray">HERO</text>
+<text text-anchor="middle" x="30" y="-286.9" font-family="Times,serif" font-size="9.00">HERO Move 1</text>
 </g>
 <!-- level2_label -->
 <g id="node3" class="node">
 <title>level2_label</title>
-<text text-anchor="middle" x="30.3" y="-193.7" font-family="Times,serif" font-size="11.00" fill="gray">VILLAIN</text>
+<text text-anchor="middle" x="30" y="-193.7" font-family="Times,serif" font-size="9.00">VILLAIN Move 1</text>
 </g>
 <!-- level3_label -->
 <g id="node4" class="node">
 <title>level3_label</title>
-<text text-anchor="middle" x="39.3" y="-100.5" font-family="Times,serif" font-size="11.00" fill="gray">HERO</text>
+<text text-anchor="middle" x="30" y="-100.5" font-family="Times,serif" font-size="9.00">HERO Move 2</text>
 </g>
 <!-- level4_label -->
 <g id="node5" class="node">
 <title>level4_label</title>
-<text text-anchor="middle" x="126.3" y="-7.3" font-family="Times,serif" font-size="11.00" fill="gray">VILLAIN</text>
+<text text-anchor="middle" x="30" y="-7.3" font-family="Times,serif" font-size="9.00">VILLAIN Move 2</text>
 </g>
 <!-- node_01 -->
 <g id="node6" class="node">
 <title>node_01</title>
 <polygon fill="none" stroke="black" points="224.72,-394 173.88,-394 173.88,-372.8 224.72,-372.8 224.72,-394"/>
-<text text-anchor="middle" x="199.3" y="-380.1" font-family="Times,serif" font-size="11.00" fill="gray">START</text>
+<text text-anchor="middle" x="199.3" y="-380.1" font-family="Times,serif" font-size="11.00">START</text>
 </g>
 <!-- node_11 -->
 <g id="node7" class="node">
 <title>node_11</title>
 <polygon fill="none" stroke="black" points="194.94,-300.8 141.66,-300.8 141.66,-279.6 194.94,-279.6 194.94,-300.8"/>
-<text text-anchor="middle" x="168.3" y="-286.9" font-family="Times,serif" font-size="11.00" fill="gray">CHECK</text>
+<text text-anchor="middle" x="168.3" y="-286.9" font-family="Times,serif" font-size="11.00">CHECK</text>
 </g>
 <!-- node_01&#45;&gt;node_11 -->
 <g id="edge1" class="edge">
@@ -49,7 +49,7 @@
 <g id="node8" class="node">
 <title>node_12</title>
 <polygon fill="none" stroke="black" points="249.69,-300.8 212.91,-300.8 212.91,-279.6 249.69,-279.6 249.69,-300.8"/>
-<text text-anchor="middle" x="231.3" y="-286.9" font-family="Times,serif" font-size="11.00" fill="gray">BET</text>
+<text text-anchor="middle" x="231.3" y="-286.9" font-family="Times,serif" font-size="11.00">BET</text>
 </g>
 <!-- node_01&#45;&gt;node_12 -->
 <g id="edge2" class="edge">
@@ -61,7 +61,7 @@
 <g id="node9" class="node">
 <title>node_21</title>
 <polygon fill="none" stroke="black" points="131.94,-207.6 78.66,-207.6 78.66,-186.4 131.94,-186.4 131.94,-207.6"/>
-<text text-anchor="middle" x="105.3" y="-193.7" font-family="Times,serif" font-size="11.00" fill="gray">CHECK</text>
+<text text-anchor="middle" x="105.3" y="-193.7" font-family="Times,serif" font-size="11.00">CHECK</text>
 </g>
 <!-- node_11&#45;&gt;node_21 -->
 <g id="edge3" class="edge">
@@ -73,7 +73,7 @@
 <g id="node10" class="node">
 <title>node_22</title>
 <polygon fill="none" stroke="black" points="186.69,-207.6 149.91,-207.6 149.91,-186.4 186.69,-186.4 186.69,-207.6"/>
-<text text-anchor="middle" x="168.3" y="-193.7" font-family="Times,serif" font-size="11.00" fill="gray">BET</text>
+<text text-anchor="middle" x="168.3" y="-193.7" font-family="Times,serif" font-size="11.00">BET</text>
 </g>
 <!-- node_11&#45;&gt;node_22 -->
 <g id="edge4" class="edge">
@@ -85,7 +85,7 @@
 <g id="node11" class="node">
 <title>node_23</title>
 <polygon fill="none" stroke="black" points="251.66,-207.6 206.94,-207.6 206.94,-186.4 251.66,-186.4 251.66,-207.6"/>
-<text text-anchor="middle" x="229.3" y="-193.7" font-family="Times,serif" font-size="11.00" fill="gray">FOLD</text>
+<text text-anchor="middle" x="229.3" y="-193.7" font-family="Times,serif" font-size="11.00">FOLD</text>
 </g>
 <!-- node_12&#45;&gt;node_23 -->
 <g id="edge5" class="edge">
@@ -97,7 +97,7 @@
 <g id="node12" class="node">
 <title>node_24</title>
 <polygon fill="none" stroke="black" points="314.66,-207.6 269.94,-207.6 269.94,-186.4 314.66,-186.4 314.66,-207.6"/>
-<text text-anchor="middle" x="292.3" y="-193.7" font-family="Times,serif" font-size="11.00" fill="gray">CALL</text>
+<text text-anchor="middle" x="292.3" y="-193.7" font-family="Times,serif" font-size="11.00">CALL</text>
 </g>
 <!-- node_12&#45;&gt;node_24 -->
 <g id="edge6" class="edge">
@@ -109,7 +109,7 @@
 <g id="node13" class="node">
 <title>node_25</title>
 <polygon fill="none" stroke="black" points="380.19,-207.6 332.41,-207.6 332.41,-186.4 380.19,-186.4 380.19,-207.6"/>
-<text text-anchor="middle" x="356.3" y="-193.7" font-family="Times,serif" font-size="11.00" fill="gray">RAISE</text>
+<text text-anchor="middle" x="356.3" y="-193.7" font-family="Times,serif" font-size="11.00">RAISE</text>
 </g>
 <!-- node_12&#45;&gt;node_25 -->
 <g id="edge7" class="edge">
@@ -121,7 +121,7 @@
 <g id="node14" class="node">
 <title>node_31</title>
 <polygon fill="none" stroke="black" points="124.66,-114.4 79.94,-114.4 79.94,-93.2 124.66,-93.2 124.66,-114.4"/>
-<text text-anchor="middle" x="102.3" y="-100.5" font-family="Times,serif" font-size="11.00" fill="gray">FOLD</text>
+<text text-anchor="middle" x="102.3" y="-100.5" font-family="Times,serif" font-size="11.00">FOLD</text>
 </g>
 <!-- node_22&#45;&gt;node_31 -->
 <g id="edge8" class="edge">
@@ -133,7 +133,7 @@
 <g id="node15" class="node">
 <title>node_32</title>
 <polygon fill="none" stroke="black" points="187.66,-114.4 142.94,-114.4 142.94,-93.2 187.66,-93.2 187.66,-114.4"/>
-<text text-anchor="middle" x="165.3" y="-100.5" font-family="Times,serif" font-size="11.00" fill="gray">CALL</text>
+<text text-anchor="middle" x="165.3" y="-100.5" font-family="Times,serif" font-size="11.00">CALL</text>
 </g>
 <!-- node_22&#45;&gt;node_32 -->
 <g id="edge9" class="edge">
@@ -145,7 +145,7 @@
 <g id="node16" class="node">
 <title>node_33</title>
 <polygon fill="none" stroke="black" points="253.19,-114.4 205.41,-114.4 205.41,-93.2 253.19,-93.2 253.19,-114.4"/>
-<text text-anchor="middle" x="229.3" y="-100.5" font-family="Times,serif" font-size="11.00" fill="gray">RAISE</text>
+<text text-anchor="middle" x="229.3" y="-100.5" font-family="Times,serif" font-size="11.00">RAISE</text>
 </g>
 <!-- node_22&#45;&gt;node_33 -->
 <g id="edge10" class="edge">
@@ -157,7 +157,7 @@
 <g id="node17" class="node">
 <title>node_34</title>
 <polygon fill="none" stroke="black" points="315.66,-114.4 270.94,-114.4 270.94,-93.2 315.66,-93.2 315.66,-114.4"/>
-<text text-anchor="middle" x="293.3" y="-100.5" font-family="Times,serif" font-size="11.00" fill="gray">FOLD</text>
+<text text-anchor="middle" x="293.3" y="-100.5" font-family="Times,serif" font-size="11.00">FOLD</text>
 </g>
 <!-- node_25&#45;&gt;node_34 -->
 <g id="edge11" class="edge">
@@ -169,7 +169,7 @@
 <g id="node18" class="node">
 <title>node_35</title>
 <polygon fill="none" stroke="black" points="378.66,-114.4 333.94,-114.4 333.94,-93.2 378.66,-93.2 378.66,-114.4"/>
-<text text-anchor="middle" x="356.3" y="-100.5" font-family="Times,serif" font-size="11.00" fill="gray">CALL</text>
+<text text-anchor="middle" x="356.3" y="-100.5" font-family="Times,serif" font-size="11.00">CALL</text>
 </g>
 <!-- node_25&#45;&gt;node_35 -->
 <g id="edge12" class="edge">
@@ -181,7 +181,7 @@
 <g id="node19" class="node">
 <title>node_36</title>
 <polygon fill="none" stroke="black" points="442.27,-114.4 396.33,-114.4 396.33,-93.2 442.27,-93.2 442.27,-114.4"/>
-<text text-anchor="middle" x="419.3" y="-100.5" font-family="Times,serif" font-size="11.00" fill="gray">3-BET</text>
+<text text-anchor="middle" x="419.3" y="-100.5" font-family="Times,serif" font-size="11.00">3-BET</text>
 </g>
 <!-- node_25&#45;&gt;node_36 -->
 <g id="edge13" class="edge">
@@ -193,7 +193,7 @@
 <g id="node20" class="node">
 <title>node_41</title>
 <polygon fill="none" stroke="black" points="219.66,-21.2 174.94,-21.2 174.94,0 219.66,0 219.66,-21.2"/>
-<text text-anchor="middle" x="197.3" y="-7.3" font-family="Times,serif" font-size="11.00" fill="gray">FOLD</text>
+<text text-anchor="middle" x="197.3" y="-7.3" font-family="Times,serif" font-size="11.00">FOLD</text>
 </g>
 <!-- node_33&#45;&gt;node_41 -->
 <g id="edge14" class="edge">
@@ -205,7 +205,7 @@
 <g id="node21" class="node">
 <title>node_42</title>
 <polygon fill="none" stroke="black" points="282.66,-21.2 237.94,-21.2 237.94,0 282.66,0 282.66,-21.2"/>
-<text text-anchor="middle" x="260.3" y="-7.3" font-family="Times,serif" font-size="11.00" fill="gray">CALL</text>
+<text text-anchor="middle" x="260.3" y="-7.3" font-family="Times,serif" font-size="11.00">CALL</text>
 </g>
 <!-- node_33&#45;&gt;node_42 -->
 <g id="edge15" class="edge">
@@ -217,7 +217,7 @@
 <g id="node22" class="node">
 <title>node_43</title>
 <polygon fill="none" stroke="black" points="409.66,-21.2 364.94,-21.2 364.94,0 409.66,0 409.66,-21.2"/>
-<text text-anchor="middle" x="387.3" y="-7.3" font-family="Times,serif" font-size="11.00" fill="gray">FOLD</text>
+<text text-anchor="middle" x="387.3" y="-7.3" font-family="Times,serif" font-size="11.00">FOLD</text>
 </g>
 <!-- node_36&#45;&gt;node_43 -->
 <g id="edge16" class="edge">
@@ -229,7 +229,7 @@
 <g id="node23" class="node">
 <title>node_44</title>
 <polygon fill="none" stroke="black" points="472.66,-21.2 427.94,-21.2 427.94,0 472.66,0 472.66,-21.2"/>
-<text text-anchor="middle" x="450.3" y="-7.3" font-family="Times,serif" font-size="11.00" fill="gray">CALL</text>
+<text text-anchor="middle" x="450.3" y="-7.3" font-family="Times,serif" font-size="11.00">CALL</text>
 </g>
 <!-- node_36&#45;&gt;node_44 -->
 <g id="edge17" class="edge">
