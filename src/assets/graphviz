@@ -1,0 +1,66 @@
+digraph G {
+    // Global graph attributes for layout and centering
+    rankdir=TB; // Top to Bottom layout
+    graph [
+        ranksep=1.0;     // Vertical separation between ranks (levels)
+        splines=polyline; // Use polyline edges for a cleaner, less curvy look
+        center=true; // Explicitly tell Graphviz to try and center the graph
+    ];
+
+    // Default style for actual content nodes
+    node [shape=rectangle, fontcolor=black, fontsize=12];
+
+    // Define level labels as invisible nodes
+    // These will act as placeholders to display the level names without boxes
+    node [shape=none, fontcolor=gray, fontsize=11, width=0, height=0]; // Make them invisible and small
+    level0_label [label="START"];
+    level1_label [label="HERO"];
+    level2_label [label="VILLAIN"];
+    level3_label [label="HERO"];
+    level4_label [label="VILLAIN"];
+
+    // Restore default node style for actual graph nodes
+    node [shape=rectangle]; // Overrides the "shape=none" for subsequent nodes
+
+    // Define nodes for each level and group them using 'rank=same'
+    // The invisible label nodes are placed first in their respective rank groups
+    // to encourage them to appear on the left.
+
+    // Level 0: START
+    { rank=same; level0_label; node_01 [label="START"]; }
+
+    // Level 1: HERO
+    { rank=same; level1_label; node_11 [label="CHECK"]; node_12 [label="BET"]; }
+
+    // Level 2: VILLAIN
+    { rank=same; level2_label; node_21 [label="CHECK"]; node_22 [label="BET"]; node_23 [label="FOLD"]; node_24 [label="CALL"]; node_25 [label="RAISE"]; }
+
+    // Level 3: HERO
+    { rank=same; level3_label; node_31 [label="FOLD"]; node_32 [label="CALL"]; node_33 [label="RAISE"]; node_34 [label="FOLD"]; node_35 [label="CALL"]; node_36 [label="3-BET"]; }
+
+    // Level 4: VILLAIN
+    { rank=same; level4_label; node_41 [label="FOLD"]; node_42 [label="CALL"]; node_43 [label="FOLD"]; node_44 [label="CALL"]; }
+
+    // Define edges
+    node_01 -> node_11;
+    node_01 -> node_12;
+
+    node_11 -> node_21;
+    node_11 -> node_22;
+    node_12 -> node_23;
+    node_12 -> node_24;
+    node_12 -> node_25;
+
+    node_22 -> node_31;
+    node_22 -> node_32;
+    node_22 -> node_33;
+    node_25 -> node_34;
+    node_25 -> node_35;
+    node_25 -> node_36;
+
+    node_33 -> node_41;
+    node_33 -> node_42;
+    node_36 -> node_43;
+    node_36 -> node_44;
+
+}
