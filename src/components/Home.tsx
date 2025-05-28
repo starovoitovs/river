@@ -81,7 +81,7 @@ export default function Home() {
     valueFormat: (value: number) => string = (value) => value.toFixed(2)
   ) => (
     <Box sx={{ width: '100%', px: 2 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0 }}>
         <Typography variant="body2">{label}</Typography>
         <Typography variant="body2" color="text.secondary">
           {valueFormat(gameState[key])}
@@ -146,8 +146,8 @@ export default function Home() {
           },
         }}
       >
-        <Toolbar /> {/* Add spacing for fixed AppBar */}
-        <Box sx={{ overflowX: 'hidden' }}>
+        <Toolbar variant="dense"/> {/* Add spacing for fixed AppBar */}
+        <Box sx={{ overflowX: 'hidden', height: '100%' }}>
           <Box sx={{ px: 2, mb: 1, mt: 1, display: 'flex', alignItems: 'center' }}>
             <Typography variant="body1" sx={{ mr: 0, fontWeight: 500 }}>Payoff</Typography>
             <IconButton
@@ -161,14 +161,14 @@ export default function Home() {
               size="small"
               value={gameState.useLogUtility}
               onChange={(e) => setGameState(prev => ({ ...prev, useLogUtility: e.target.value }))}
-              sx={{ minWidth: 120, mr: 1 }}
+              sx={{ minWidth: 120, mr: 1, fontSize: '0.875rem' }}
             >
               <MenuItem value="linear">Linear</MenuItem>
               <MenuItem value="logarithmic">Logarithmic</MenuItem>
             </Select>
           </Box>
 
-          <Divider sx={{ my: 1 }} />
+          <Divider sx={{ mt: 0, mb: 1 }} />
 
           <Box sx={{ px: 2, mb: 1, display: 'flex', alignItems: 'center' }}>
             <Typography variant="body1" sx={{fontWeight: 500}}>Stack and Pot</Typography>
@@ -184,7 +184,7 @@ export default function Home() {
           {createSlider('Initial Pot', 'potPercent', 5, 50, 5,
             value => `${value}% (${(gameState.stack * value / 100).toFixed(1)} BB)`)}
 
-          <Divider sx={{ my: 1 }} />
+          <Divider sx={{ mt: 0, mb: 1 }} />
 
           <Box sx={{ px: 2, mb: 1, display: 'flex', alignItems: 'center' }}>
             <Typography variant="body1" sx={{fontWeight: 500}}>Hero Equity</Typography>
@@ -202,7 +202,7 @@ export default function Home() {
           {createSlider('Equity After Villain Raise', 'pwinAfterVillainRaise', 0, 1, 0.01,
             value => `${(value * 100).toFixed(0)}%`)}
             
-          <Divider sx={{ my: 1 }} />
+          <Divider sx={{ mt: 0, mb: 1 }} />
 
           <Box sx={{ px: 2, mb: 1, display: 'flex', alignItems: 'center' }}>
             <Typography variant="body1" sx={{fontWeight: 500}}>Bet sizing</Typography>

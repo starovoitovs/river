@@ -10,7 +10,7 @@ export default function Layout() {
         elevation={0}
         sx={{ zIndex: (theme) => theme.zIndex.drawer + 1 }}
       >
-        <Toolbar>
+        <Toolbar variant="dense">
           <Button component={Link} to="/" color="inherit">
             River Analysis
           </Button>
@@ -19,7 +19,7 @@ export default function Layout() {
           </Button>
         </Toolbar>
       </AppBar>
-      <Toolbar /> {/* Add spacing below fixed AppBar */}
+      <Toolbar variant="dense"/> {/* Add spacing below fixed AppBar */}
       <Box sx={{ flex: 1 }}>
         <Outlet />
       </Box>

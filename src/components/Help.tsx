@@ -101,7 +101,7 @@ export default function Help() {
           },
         }}
       >
-        <Toolbar /> {/* Add spacing for fixed AppBar */}
+        <Toolbar variant="dense"/> {/* Add spacing for fixed AppBar */}
         <Box sx={{ overflow: 'auto' }}>
           <List dense component="nav">
             {toc.map(renderTOCItem)}
