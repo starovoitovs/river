@@ -241,36 +241,48 @@ export default function Home() {
 
         <Box sx={{ mb: 3 }}>
           {solution && (
-            <Typography variant="body1" sx={{fontWeight: 500}} gutterBottom>
+            <Typography variant="body1" sx={{ fontWeight: 500, fontSize: '1.1rem' }} gutterBottom>
               Game Matrix (Hero: {solution.heroUtility.toFixed(2)}, Villain: {solution.villainUtility.toFixed(2)})
               <IconButton
-                onClick={() => navigate('/help#game-matrix-and-strategies')}
-                size="small"
+          onClick={() => navigate('/help#game-matrix-and-strategies')}
+          size="small"
               >
-                <HelpOutlineIcon fontSize="small" />
+          <HelpOutlineIcon fontSize="small" />
               </IconButton>
             </Typography>
           )}
-          
+
           <Plot
             data={[
               {
-                z: reversedMatrix.map(row => row.map(vals => vals.hero)), // Color based on hero values
-                x: columns,
-                y: [...index].reverse(),
-                type: 'heatmap',
-                colorscale: 'RdBu',
-                hoverongaps: false,
-                showscale: true
+          z: reversedMatrix.map(row => row.map(vals => vals.hero)), // Color based on hero values
+          x: columns,
+          y: [...index].reverse(),
+          type: 'heatmap',
+          colorscale: 'RdBu',
+          hoverongaps: false,
+          showscale: true
               }
             ]}
             layout={{
               ...commonPlotLayout,
+              font: { ...commonPlotLayout.font, size: 11 },
               width: window.innerWidth - DRAWER_WIDTH - 80,
-              height: 360,
-              xaxis: { tickangle: 45 },
+              height: 360, // slightly increased height for more space
+              xaxis: { 
+          tickangle: 45,
+          automargin: true,
+          tickfont: { size: 12 },
+          tickvals: columns,
+          ticktext: columns,
+          side: 'bottom'
+              },
               yaxis: { autorange: true },
-              annotations: createAnnotations()
+              margin: { ...commonPlotLayout.margin, b: 100 }, // increase bottom margin for x-axis labels
+              annotations: createAnnotations().map(a => ({
+          ...a,
+          font: { ...a.font, size: 9 }
+              }))
             }}
           />
         </Box>
@@ -279,63 +291,79 @@ export default function Home() {
           <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 3, mb: 3 }}>
             <Box>
               <Typography variant="body1" sx={{fontWeight: 500}} gutterBottom>Hero Strategy
-                <IconButton
-                  onClick={() => navigate('/help#game-matrix-and-strategies')}
-                  size="small"
-                >
-                  <HelpOutlineIcon fontSize="small" />
-                </IconButton>
+              <IconButton
+                onClick={() => navigate('/help#game-matrix-and-strategies')}
+                size="small"
+              >
+                <HelpOutlineIcon fontSize="small" />
+              </IconButton>
               </Typography>
               
               <Plot
-                data={[
-                  {
-                    x: index,
-                    y: solution.row_strategy,
-                    type: 'bar',
-                    text: solution.row_strategy.map(v => v.toFixed(3)),
-                    textposition: 'auto',
-                    textfont: { size: 9 },
-                    marker: { color: '#070aac' }  // RdBu blue color
-                  }
-                ]}
-                layout={{
-                  ...commonPlotLayout,
-                  width: (window.innerWidth - DRAWER_WIDTH - 100) / 2,
-                  height: 260,
-                  xaxis: { tickangle: 45 }
-                }}
+              data={[
+                {
+                x: index,
+                y: solution.row_strategy,
+                type: 'bar',
+                text: solution.row_strategy.map(v => v.toFixed(3)),
+                textposition: 'auto',
+                textfont: { size: 9 },
+                marker: { color: '#070aac' }  // RdBu blue color
+                }
+              ]}
+              layout={{
+                ...commonPlotLayout,
+                width: (window.innerWidth - DRAWER_WIDTH - 100) / 2,
+                height: 260,
+                xaxis: { 
+                tickangle: 45,
+                automargin: true,
+                tickfont: { size: 12 },
+                tickvals: index,
+                ticktext: index,
+                side: 'bottom'
+                },
+                margin: { ...commonPlotLayout.margin, b: 100, r: 60 } // increase bottom and right margin
+              }}
               />
             </Box>
 
             <Box>
               <Typography variant="body1" sx={{fontWeight: 500}} gutterBottom>
-                Villain Strategy
-                <IconButton
-                  onClick={() => navigate('/help#game-matrix-and-strategies')}
-                  size="small"
-                >
-                  <HelpOutlineIcon fontSize="small" />
-                </IconButton>
+              Villain Strategy
+              <IconButton
+                onClick={() => navigate('/help#game-matrix-and-strategies')}
+                size="small"
+              >
+                <HelpOutlineIcon fontSize="small" />
+              </IconButton>
               </Typography>
               <Plot
-                data={[
-                  {
-                    x: columns,
-                    y: solution.col_strategy,
-                    type: 'bar',
-                    text: solution.col_strategy.map(v => v.toFixed(3)),
-                    textposition: 'auto',
-                    textfont: { size: 9 },
-                    marker: { color: '#070aac' }  // RdBu blue color
-                  }
-                ]}
-                layout={{
-                  ...commonPlotLayout,
-                  width: (window.innerWidth - DRAWER_WIDTH - 100) / 2,
-                  height: 260,
-                  xaxis: { tickangle: 45 }
-                }}
+              data={[
+                {
+                x: columns,
+                y: solution.col_strategy,
+                type: 'bar',
+                text: solution.col_strategy.map(v => v.toFixed(3)),
+                textposition: 'auto',
+                textfont: { size: 9 },
+                marker: { color: '#070aac' }  // RdBu blue color
+                }
+              ]}
+              layout={{
+                ...commonPlotLayout,
+                width: (window.innerWidth - DRAWER_WIDTH - 100) / 2,
+                height: 260,
+                xaxis: { 
+                tickangle: 45,
+                automargin: true,
+                tickfont: { size: 12 },
+                tickvals: columns,
+                ticktext: columns,
+                side: 'bottom'
+                },
+                margin: { ...commonPlotLayout.margin, b: 100, r: 60 } // increase bottom and right margin
+              }}
               />
             </Box>
           </Box>
