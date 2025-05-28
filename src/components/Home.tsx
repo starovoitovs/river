@@ -13,8 +13,9 @@ export default function Home() {
   const navigate = useNavigate();
   const [gameState, setGameState] = useState<GameState>({
     useLogUtility: 'linear',
-    stack: 100,
-    potPercent: 20,
+    heroStack: 100,
+    villainStack: 100,
+    potSize: 20,
     heroBet: 0.5,
     heroRaise: 1.0,
     hero3bet: 1.0,
@@ -25,11 +26,16 @@ export default function Home() {
     pwinAfterVillainRaise: 0.5
   });
 
-  const [matrix, setMatrix] = useState<number[][]>([]);
+  const [matrix, setMatrix] = useState<{
+    heroMatrix: number[][];
+    villainMatrix: number[][];
+  }>({ heroMatrix: [], villainMatrix: [] });
+  
   const [solution, setSolution] = useState<{
     row_strategy: number[];
     col_strategy: number[];
-    utility: number;
+    heroUtility: number;
+    villainUtility: number;
   } | null>(null);
 
   useEffect(() => {
@@ -39,7 +45,7 @@ export default function Home() {
   }, [gameState]);
 
   const calculateBetAmounts = () => {
-    const initialPot = gameState.stack * gameState.potPercent / 100;
+    const initialPot = gameState.potSize;
     
     // Hero bet - direct pot fraction
     const heroBetSize = initialPot * gameState.heroBet;
@@ -101,26 +107,29 @@ export default function Home() {
     </Box>
   );
 
-  const formatMatrixForDisplay = (matrix: number[][]) => {
-    return matrix.slice().reverse().map(row =>
-      [...row]
+  const formatMatrixForDisplay = (heroMatrix: number[][], villainMatrix: number[][]) => {
+    return heroMatrix.slice().reverse().map((row, i) =>
+      row.map((heroVal, j) => ({
+        hero: heroVal,
+        villain: villainMatrix[heroMatrix.length - 1 - i][j]
+      }))
     );
   };
 
-  const reversedMatrix = formatMatrixForDisplay(matrix);
+  const reversedMatrix = formatMatrixForDisplay(matrix.heroMatrix, matrix.villainMatrix);
 
   const createAnnotations = () => {
-    return reversedMatrix.map((row, i) => 
-      row.map((val, j) => ({
+    return reversedMatrix.map((row, i) =>
+      row.map((vals, j) => ({
         x: j,
         y: i,
         xref: 'x' as const,
         yref: 'y' as const,
-        text: val.toFixed(1),
+        text: `(${vals.hero.toFixed(1)}, ${vals.villain.toFixed(1)})`,
         showarrow: false,
         font: {
           color: 'white',
-          size: 9
+          size: 8
         }
       }))
     ).flat();
@@ -179,10 +188,12 @@ export default function Home() {
               <HelpOutlineIcon fontSize="small" />
             </IconButton>
           </Box>
-          {createSlider('Stack Size', 'stack', 50, 200, 10,
+          {createSlider('Hero Stack Size', 'heroStack', 50, 200, 5,
             value => `${value} BB`)}
-          {createSlider('Initial Pot', 'potPercent', 5, 50, 5,
-            value => `${value}% (${(gameState.stack * value / 100).toFixed(1)} BB)`)}
+          {createSlider('Villain Stack Size', 'villainStack', 50, 200, 5,
+            value => `${value} BB`)}
+          {createSlider('Initial Pot', 'potSize', 5, 200, 5,
+            value => `${value} BB`)}
 
           <Divider sx={{ mt: 0, mb: 1 }} />
 
@@ -231,7 +242,7 @@ export default function Home() {
         <Box sx={{ mb: 3 }}>
           {solution && (
             <Typography variant="body1" sx={{fontWeight: 500}} gutterBottom>
-              Game Matrix (Value: {solution.utility.toFixed(2)})
+              Game Matrix (Hero: {solution.heroUtility.toFixed(2)}, Villain: {solution.villainUtility.toFixed(2)})
               <IconButton
                 onClick={() => navigate('/help#game-matrix-and-strategies')}
                 size="small"
@@ -244,7 +255,7 @@ export default function Home() {
           <Plot
             data={[
               {
-                z: reversedMatrix,
+                z: reversedMatrix.map(row => row.map(vals => vals.hero)), // Color based on hero values
                 x: columns,
                 y: [...index].reverse(),
                 type: 'heatmap',

@@ -13,7 +13,8 @@ For simplicity, the analysis assumes a maximum of 4 actions per street, resultin
 The game matrix represents:
 - Y-axis: Hero's actions `(action1-action2)`
 - X-axis: Villain's actions `(action1-action2 if Hero checks first/action1-action2 if Hero bets first)`
-- Cell entries: payoff/log-payoff for Hero's perspective in the units of BB/log-BB
+- Cell entries: value (payoff/log-payoff) for Hero/Villan in the units of BB/log-BB
+- Color-coding: based on the value from Hero's perspective
 
 Each player aims to maximize their own value. The Nash Equilibrium (NE) represents a stable state where neither player can improve by unilaterally changing their strategy. The NE can be a pure strategy (if a saddlepoint exists) or a mixed strategy (otherwise). The bar plots visualize the (potentially mixed) equilibrium strategies.
 
@@ -44,15 +45,18 @@ See [detailed discussion below](#advanced-considerations).
 - **Stack Size**: Your current stack before the street (before river in our case)
 - **Pot Size**: Amount in pot before the street (before river in our case)
 
-If not using log-payoff, relation of stack size to the current pot does not matter, only current pot size.
+If not using log-payoff, the stack size relative to the current pot size does not matter, only the current pot size.
 
 ### 3. Hero Equity
+
 Input your range equity estimates based on:
 - Initial situation
 - After Hero's check and subsequent Villain's bet
 - After Hero's bet and subsequent Villain's raise
 
-These estimates are basically universal knowledge, so that both Hero and Villain have the same opinion about these probabilities.
+You can compute these equities in any range equity calculator, such as Equilab.
+
+These estimates are considered universal knowledge, so that both Hero and Villain have the same opinion about these probabilities.
 
 ### 4. Bet Sizing
 Specify anticipated bet sizes as pot percentages. The amounts in brackets are the total bet amounts after the respective action.

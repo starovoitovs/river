@@ -1,7 +1,8 @@
 export interface GameState {
   useLogUtility: 'linear' | 'logarithmic';
-  stack: number;          // Stack size in BB
-  potPercent: number;     // Pot as percentage of stack
+  heroStack: number;          // Hero stack size in BB
+  villainStack: number;   // Villain stack size in BB
+  potSize: number;        // Initial pot size in big blinds
   heroBet: number;        // Bet sizes as fractions of current pot
   heroRaise: number;
   hero3bet: number;

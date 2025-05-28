@@ -15,8 +15,9 @@ function calculateUtility(amount: number, useLogUtility: 'linear' | 'logarithmic
 export function calculateMatrix(state: GameState) {
   const {
     useLogUtility,
-    stack,
-    potPercent,
+    heroStack,
+    villainStack,
+    potSize,
     heroBet,
     heroRaise,
     hero3bet,
@@ -28,7 +29,7 @@ export function calculateMatrix(state: GameState) {
   } = state;
 
   // Calculate initial pot in BB
-  const initialPot = stack * potPercent / 100;
+  const initialPot = potSize;
 
   // Helper function to calculate sequential bet sizes
   const calculateBetSequence = (pot: number, ...fractions: number[]) => {
@@ -43,13 +44,14 @@ export function calculateMatrix(state: GameState) {
     });
   };
 
-  const matrix = Array(index.length).fill(0).map(() => Array(columns.length).fill(0));
+  const heroMatrix = Array(index.length).fill(0).map(() => Array(columns.length).fill(0));
+  const villainMatrix = Array(index.length).fill(0).map(() => Array(columns.length).fill(0));
 
-  // Helper function to calculate payoffs ensuring zero-sum property
-  const calculatePayoff = (heroAmount: number, villainAmount: number) => {
-    const heroUtility = calculateUtility(heroAmount, useLogUtility, stack);
-    const villainUtility = calculateUtility(villainAmount, useLogUtility, stack);
-    return heroUtility - villainUtility;
+  // Helper function to calculate payoffs for both players
+  const calculatePayoffs = (heroAmount: number, villainAmount: number) => {
+    const heroUtility = calculateUtility(heroAmount, useLogUtility, heroStack);
+    const villainUtility = calculateUtility(villainAmount, useLogUtility, villainStack);
+    return { heroUtility, villainUtility };
   };
 
   // Helper function to set matrix values
@@ -59,7 +61,9 @@ export function calculateMatrix(state: GameState) {
         const rowIndex = index.indexOf(row);
         const colIndex = columns.indexOf(col);
         if (rowIndex !== -1 && colIndex !== -1) {
-          matrix[rowIndex][colIndex] = calculatePayoff(heroValue, villainValue);
+          const { heroUtility, villainUtility } = calculatePayoffs(heroValue, villainValue);
+          heroMatrix[rowIndex][colIndex] = heroUtility;
+          villainMatrix[rowIndex][colIndex] = villainUtility;
         }
       });
     });
@@ -85,15 +89,15 @@ export function calculateMatrix(state: GameState) {
 
   // Check against bet scenarios
   setValues(['check-fold'], ['bet-fold/fold', 'bet-fold/call', 'bet-fold/raise-fold', 'bet-fold/raise-call'],
-    0, initialPot + villainBetAmount);
+    0, initialPot);
   setValues(['check-call'], ['bet-fold/fold', 'bet-fold/call', 'bet-fold/raise-fold', 'bet-fold/raise-call'],
     pwinAfterVillainBet * (initialPot + villainBetAmount) - (1 - pwinAfterVillainBet) * villainBetAmount,
     (1 - pwinAfterVillainBet) * (initialPot + villainBetAmount) - pwinAfterVillainBet * villainBetAmount);
   setValues(['check-raise'], ['bet-fold/fold', 'bet-fold/call', 'bet-fold/raise-fold', 'bet-fold/raise-call'],
-    initialPot + villainBetAmount, 0);
+    initialPot + villainBetAmount, -villainBetAmount);
 
   setValues(['check-fold'], ['bet-call/fold', 'bet-call/call', 'bet-call/raise-fold', 'bet-call/raise-call'],
-    0, initialPot + villainBetAmount);
+    0, initialPot);
   setValues(['check-call'], ['bet-call/fold', 'bet-call/call', 'bet-call/raise-fold', 'bet-call/raise-call'],
     pwinAfterVillainBet * (initialPot + villainBetAmount) - (1 - pwinAfterVillainBet) * villainBetAmount,
     (1 - pwinAfterVillainBet) * (initialPot + villainBetAmount) - pwinAfterVillainBet * villainBetAmount);
@@ -114,7 +118,7 @@ export function calculateMatrix(state: GameState) {
     pwinAfterVillainRaise * (initialPot + heroBetAmount + villainRaiseAmount) - (1 - pwinAfterVillainRaise) * (heroBetAmount + villainRaiseAmount),
     (1 - pwinAfterVillainRaise) * (initialPot + heroBetAmount + villainRaiseAmount) - pwinAfterVillainRaise * (heroBetAmount + villainRaiseAmount));
   setValues(['bet-3bet'], ['check/raise-fold', 'bet-fold/raise-fold', 'bet-call/raise-fold'],
-    initialPot + heroBetAmount + villainRaiseAmount, 0);
+    initialPot + villainRaiseAmount, -villainRaiseAmount);
 
   setValues(['bet-fold'], ['check/raise-call', 'bet-fold/raise-call', 'bet-call/raise-call'],
     -heroBetAmount, initialPot + heroBetAmount);
@@ -125,13 +129,17 @@ export function calculateMatrix(state: GameState) {
     pwinAfterVillainRaise * (initialPot + heroBetAmount + villainRaiseAmount + hero3betAmount) - (1 - pwinAfterVillainRaise) * (heroBetAmount + villainRaiseAmount + hero3betAmount),
     (1 - pwinAfterVillainRaise) * (initialPot + heroBetAmount + villainRaiseAmount + hero3betAmount) - pwinAfterVillainRaise * (heroBetAmount + villainRaiseAmount + hero3betAmount));
 
-  return matrix;
+  return {
+    heroMatrix,
+    villainMatrix
+  };
 }
 
-export function solveGame(matrix: number[][]) {
+export function solveGame(matrices: { heroMatrix: number[][], villainMatrix: number[][] }) {
+  const { heroMatrix, villainMatrix } = matrices;
   // Simple implementation of fictitious play for approximating Nash equilibrium
-  const rows = matrix.length;
-  const cols = matrix[0].length;
+  const rows = heroMatrix.length;
+  const cols = heroMatrix[0].length;
   
   let row_strategy = Array(rows).fill(1/rows);
   let col_strategy = Array(cols).fill(1/cols);
@@ -140,21 +148,21 @@ export function solveGame(matrix: number[][]) {
   const learning_rate = 0.1;
   
   for (let i = 0; i < iterations; i++) {
-    // Update row player strategy
-    const row_payoffs = row_strategy.map((_, r) => 
-      math.sum(matrix[r].map((v, c) => v * col_strategy[c]))
+    // Update row player strategy based on hero matrix
+    const row_payoffs = row_strategy.map((_, r) =>
+      math.sum(heroMatrix[r].map((v, c) => v * col_strategy[c]))
     );
     const best_row = row_payoffs.indexOf(Math.max(...row_payoffs));
-    row_strategy = row_strategy.map((v, idx) => 
+    row_strategy = row_strategy.map((v, idx) =>
       idx === best_row ? v + learning_rate * (1 - v) : v * (1 - learning_rate)
     );
     
-    // Update column player strategy
-    const col_payoffs = col_strategy.map((_, c) => 
-      -math.sum(matrix.map((r, i) => r[c] * row_strategy[i]))
+    // Update column player strategy based on villain matrix
+    const col_payoffs = col_strategy.map((_, c) =>
+      math.sum(villainMatrix.map((r, i) => r[c] * row_strategy[i]))
     );
     const best_col = col_payoffs.indexOf(Math.max(...col_payoffs));
-    col_strategy = col_strategy.map((v, idx) => 
+    col_strategy = col_strategy.map((v, idx) =>
       idx === best_col ? v + learning_rate * (1 - v) : v * (1 - learning_rate)
     );
     
@@ -165,14 +173,19 @@ export function solveGame(matrix: number[][]) {
     col_strategy = col_strategy.map(v => v / col_sum);
   }
   
-  // Calculate utility
-  const utility = math.sum(matrix.map((row, i) => 
+  // Calculate utilities for both players
+  const heroUtility = math.sum(heroMatrix.map((row, i) =>
+    math.sum(row.map((v, j) => v * row_strategy[i] * col_strategy[j]))
+  ));
+  
+  const villainUtility = math.sum(villainMatrix.map((row, i) =>
     math.sum(row.map((v, j) => v * row_strategy[i] * col_strategy[j]))
   ));
   
   return {
     row_strategy,
     col_strategy,
-    utility
+    heroUtility,
+    villainUtility
   };
 }
