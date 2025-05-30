@@ -9,7 +9,7 @@ import type { GameState } from '../types';
 import { index, columns } from '../types';
 
 const DRAWER_WIDTH = 280;
-const ANNOTATION_THRESHOLD = 0.001; // Threshold for probabilities in mixed strategies so that we display asterisk
+const ANNOTATION_THRESHOLD = 0.01; // Threshold for probabilities in mixed strategies so that we display asterisk
 
 export default function Home() {
   const navigate = useNavigate();

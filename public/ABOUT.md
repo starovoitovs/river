@@ -25,7 +25,7 @@ We approximate the Nash Equilibrium using fictitious play, as in the non-constan
 
 ## Configuration Options
 
-### 1. Payoff Type
+### Payoff Type
 
 #### Linear Payoff
 - Suitable for cash games with deep stacks
@@ -41,19 +41,43 @@ We approximate the Nash Equilibrium using fictitious play, as in the non-constan
 
 See [detailed discussion below](#advanced-considerations).
 
-### 2. Stack and Pot Settings
+### Stack and Pot Settings
 - **Stack Size**: Your current stack before the street (before river in our case)
 - **Pot Size**: Amount in pot before the street (before river in our case)
 
 If not using log-payoff, the stack size relative to the current pot size does not matter, only the current pot size.
 
-### 3. Range Settings
+### Range Settings
 
-Discretize Hero's and Villain's ranges by assigning respective probabilities (they should sum up to 1). Hero's ranges are called H1, H2 ..., Villain's ranges are called V1, V2 ...
+To begin, define each player's range categories (e.g., H1, H2 for Hero; V1, V2 for Villain) and assign their respective probabilities (summing to 1). Then, input a matrix where each cell represents Hero's estimated equity (win probability) when Hero's m-th range category goes against Villain's n-th range category.
 
-After that, specify the matrix, such that m-th row and n-th column contain your estimate of Hero's equity of Hero's Hm range vs. Villain's Vn range.
+#### Example: Heads-Up River - Flush Board
 
-### 4. Bet Sizing
+This scenario models a heads-up river decision where the board has four spades. We categorize each player's hand into two types: "Spade Flush" (Type 1) or "No Spade Flush" (Type 2).
+
+*   **Hero Range Probabilities (0.45, 0.55):** Hero is 45% likely to have a "Spade Flush" and 55% likely to have "No Spade Flush."
+*   **Villain Range Probabilities (0.55, 0.45):** Villain is 55% likely to have a "Spade Flush" and 45% likely to have "No Spade Flush."
+*   **Hero Equities' Matrix:** Hero's win probability in showdowns:
+    *   **Hero Flush vs. Villain Flush:** 53% (Hero slightly better on average)
+    *   **Hero Flush vs. Villain No Flush:** 100% (Hero wins)
+    *   **Hero No Flush vs. Villain Flush:** 0% (Hero loses)
+    *   **Hero No Flush vs. Villain No Flush:** 53% (Hero slightly better on average)
+
+The inputs in the range settings would be then:
+
+```
+Hero Range Probabilities:
+0.45, 0.55
+
+Villain Range Probabilities:
+0.55, 0.45
+
+Hero Equities' Matrix:
+0.53, 1.00
+0.00, 0.53
+```
+
+### Bet Sizing
 Specify anticipated bet sizes as pot percentages. The amounts in brackets are the total bet amounts after the respective action.
 
 Example calculation:
