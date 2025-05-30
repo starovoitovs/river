@@ -1,5 +1,5 @@
 import type { GameState } from './types';
-import { index, columns } from './types';
+import { getHeroActions, getVillainActions } from './types';
 import { create, all } from 'mathjs';
 
 const math = create(all);
@@ -29,9 +29,13 @@ export function calculateMatrix(state: GameState) {
   } = state;
 
   // Parse range probabilities and equities matrix
-  const heroRangeProbs = heroRanges.split(',').map(Number);
-  const villainRangeProbs = villainRanges.split(',').map(Number);
-  const equityMatrix = equities.split('\n').map(row => row.split(',').map(Number));
+  // Convert percentages to probabilities
+  const heroRangeProbs = heroRanges.split(',').map(s => Number(s) / 100);
+  const villainRangeProbs = villainRanges.split(',').map(s => Number(s) / 100);
+  // Convert percentage values to probabilities
+  const equityMatrix = equities.split('\n')
+    .map(row => row.split(',')
+    .map(s => Number(s.trim()) / 100));
 
   // Calculate pot and bet sizes
   const initialPot = potSize;
@@ -44,30 +48,36 @@ export function calculateMatrix(state: GameState) {
   const potAfterVillainRaise = potAfterHeroBet + 2 * (villainRaiseAmount - heroBetAmount);
   const hero3betAmount = villainRaiseAmount + (potAfterVillainRaise * hero3bet);
 
-  // Generate all possible range-action combinations
+  // Generate all possible strategy combinations
   const generateStrategies = (ranges: number, actions: string[]): [number, string][][] => {
     const result: [number, string][][] = [];
-    const strategy = new Array(ranges).fill(0);
     
-    const generate = (pos: number) => {
-      if (pos === ranges) {
-        result.push(strategy.map((actionIndex, rangeIndex) =>
-          [rangeIndex, actions[actionIndex]] as [number, string]
-        ));
-        return;
-      }
-      for (let i = 0; i < actions.length; i++) {
-        strategy[pos] = i;
-        generate(pos + 1);
-      }
-    };
+    // Calculate total number of combinations
+    const totalCombinations = Math.pow(actions.length, ranges);
     
-    generate(0);
+    // For each possible combination
+    for (let i = 0; i < totalCombinations; i++) {
+      const strategy: [number, string][] = [];
+      let tempI = i;
+      
+      // Convert number to actions using division/modulo
+      for (let range = 0; range < ranges; range++) {
+        const actionIndex = tempI % actions.length;
+        strategy.push([range, actions[actionIndex]]);
+        tempI = Math.floor(tempI / actions.length);
+      }
+      
+      result.push(strategy);
+    }
+    
     return result;
   };
   
-  const heroStrategies = generateStrategies(heroRangeProbs.length, index);
-  const villainStrategies = generateStrategies(villainRangeProbs.length, columns);
+  const heroActions = getHeroActions(state.maxActions);
+  const villainActions = getVillainActions(state.maxActions);
+  
+  const heroStrategies = generateStrategies(heroRangeProbs.length, heroActions);
+  const villainStrategies = generateStrategies(villainRangeProbs.length, villainActions);
 
   // Create payoff matrices
   const heroMatrix = Array(heroStrategies.length).fill(0)
@@ -75,77 +85,131 @@ export function calculateMatrix(state: GameState) {
   const villainMatrix = Array(heroStrategies.length).fill(0)
     .map(() => Array(villainStrategies.length).fill(0));
 
-  // Helper function to calculate payoffs based on actions
   const getActionPayoffs = (heroAction: string, villainAction: string, equity: number) => {
-    let heroBets = 0;     // Total amount hero has bet
-    let villainBets = 0;  // Total amount villain has bet
-    let isShowdown = false;
-    
-    // Calculate all bets made in the sequence
-    if (heroAction.startsWith('bet')) {
-      heroBets += heroBetAmount;
-      if (heroAction === 'bet-3bet' && villainAction.includes('raise')) {
-        if (villainAction.includes('call')) {
-          heroBets += hero3betAmount - heroBetAmount;  // Additional amount for 3bet
-          villainBets += hero3betAmount;  // Villain calls full 3bet amount
-        } else {
-          villainBets += villainRaiseAmount;  // Villain only made raise
-        }
-      } else if (villainAction.includes('raise') && !heroAction.includes('3bet')) {
-        villainBets += villainRaiseAmount;  // Villain raised
-      } else if (villainAction.includes('call')) {
-        villainBets += heroBetAmount;  // Villain called
+
+    if (state.maxActions === 2) {
+      if (heroAction === 'check') {
+        return {
+          heroValue: equity * initialPot,
+          villainValue: (1 - equity) * initialPot
+        };
+      } else if (heroAction === 'bet' && villainAction === 'check/fold') {
+        return {
+          heroValue: initialPot,
+          villainValue: 0
+        };
+      } else if (heroAction === 'bet' && villainAction === 'check/call') {
+        return {
+          heroValue: equity * (initialPot + 2 * heroBetAmount) - heroBetAmount,
+          villainValue: (1 - equity) * (initialPot + 2 * heroBetAmount) - heroBetAmount
+        };
+      } else{
+        throw new Error('Unsupported action combination: ' + heroAction + ', ' + villainAction);
       }
-    } else if (heroAction.startsWith('check')) {
-      if (!villainAction.startsWith('check')) {
-        villainBets += villainBetAmount;  // Villain bet after check
-        if (heroAction === 'check-raise') {
-          if (villainAction.includes('call')) {
-            heroBets += heroRaiseAmount;
-            villainBets += heroRaiseAmount - villainBetAmount;  // Additional call amount
-          }
-        } else if (heroAction === 'check-call') {
-          heroBets += villainBetAmount;  // Hero called villain's bet
-        }
+    } else if (state.maxActions === 3) {
+      if (heroAction.startsWith('check') && villainAction.startsWith('check')) {
+        return {
+          heroValue: equity * initialPot,
+          villainValue: (1 - equity) * initialPot
+        };
+      } else if (heroAction == 'check-fold' && villainAction.startsWith('bet')) {
+        return {
+          heroValue: 0,
+          villainValue: initialPot
+        };
+      } else if (heroAction == 'check-call' && villainAction.startsWith('bet')) {
+        return {
+          heroValue: equity * (initialPot + 2 * villainBetAmount) - villainBetAmount,
+          villainValue: (1 - equity) * (initialPot + 2 * villainBetAmount) - villainBetAmount
+        };
+      } else if (heroAction.startsWith('bet') && villainAction.endsWith('/fold')) {
+        return {
+          heroValue: initialPot,
+          villainValue: 0
+        };
+      } else if (heroAction.startsWith('bet') && villainAction.endsWith('/call')) {
+        return {
+          heroValue: equity * (initialPot + 2 * heroBetAmount) - heroBetAmount,
+          villainValue: (1 - equity) * (initialPot + 2 * heroBetAmount) - heroBetAmount
+        };
+      } else if (heroAction == 'bet-fold' && villainAction.endsWith('raise')) {
+        return {
+          heroValue: -heroBetAmount,
+          villainValue: initialPot + heroBetAmount
+        };
+      } else if (heroAction == 'bet-call' && villainAction.endsWith('raise')) {
+        return {
+          heroValue: equity * (initialPot + 2 * villainRaiseAmount) - villainRaiseAmount,
+          villainValue: (1 - equity) * (initialPot + 2 * villainRaiseAmount) - villainRaiseAmount
+        };
+      } else{
+        throw new Error('Unsupported action combination: ' + heroAction + ', ' + villainAction);
       }
-    }
-
-    // Calculate pot size
-    const totalPot = initialPot + heroBets + villainBets;
-
-    // Determine showdown or fold
-    isShowdown = (
-      (heroAction === 'check-call' && villainAction.startsWith('check')) ||  // Both checked
-      (heroAction === 'check-call' && villainAction.includes('bet')) ||      // Bet-call
-      (heroAction === 'check-raise' && villainAction.includes('call')) ||    // Raise-call
-      (heroAction === 'bet-call' && villainAction.includes('call')) ||      // Bet-call
-      (heroAction === 'bet-3bet' && villainAction.includes('raise-call'))    // 3bet-call
-    );
-
-    if (isShowdown) {
-      // Split pot according to equity
-      return {
-        heroValue: equity * totalPot - heroBets,
-        villainValue: (1 - equity) * totalPot - villainBets
-      };
+    } else if (state.maxActions === 4) {
+      if (heroAction.startsWith('check') && villainAction.startsWith('check')) {
+        return {
+          heroValue: equity * initialPot,
+          villainValue: (1 - equity) * initialPot
+        };
+      }
+      else if (heroAction == 'check-fold' && villainAction.startsWith('bet')) {
+        return {
+          heroValue: 0,
+          villainValue: initialPot
+        };
+      } else if (heroAction == 'check-call' && villainAction.startsWith('bet')) {
+        return {
+          heroValue: equity * (initialPot + 2 * villainBetAmount) - villainBetAmount,
+          villainValue: (1 - equity) * (initialPot + 2 * villainBetAmount) - villainBetAmount
+        };
+      } else if (heroAction == 'check-raise' && villainAction.startsWith('bet-fold')) {
+        return {
+          heroValue: initialPot + villainBetAmount,
+          villainValue: -villainBetAmount
+        };
+      } else if (heroAction == 'check-raise' && villainAction.startsWith('bet-call')) {
+        return {
+          heroValue: equity * (initialPot + 2 * heroRaiseAmount) - heroRaiseAmount,
+          villainValue: (1 - equity) * (initialPot + 2 * heroRaiseAmount) - heroRaiseAmount
+        };
+      } else if (heroAction.startsWith('bet') && villainAction.endsWith('/fold')) {
+        return {
+          heroValue: initialPot,
+          villainValue: 0
+        };
+      } else if (heroAction.startsWith('bet') && villainAction.endsWith('/call')) {
+        return {
+          heroValue: equity * (initialPot + 2 * heroBetAmount) - heroBetAmount,
+          villainValue: (1 - equity) * (initialPot + 2 * heroBetAmount) - heroBetAmount
+        };
+      } else if (heroAction == 'bet-fold' && villainAction.includes('/raise')) {
+        return {
+          heroValue: -heroBetAmount,
+          villainValue: initialPot + heroBetAmount
+        };
+      } else if (heroAction == 'bet-call' && villainAction.includes('/raise')) {
+        return {
+          heroValue: equity * (initialPot + 2 * villainRaiseAmount) - villainRaiseAmount,
+          villainValue: (1 - equity) * (initialPot + 2 * villainRaiseAmount) - villainRaiseAmount
+        };
+      } else if (heroAction == 'bet-3bet' && villainAction.endsWith('raise-fold')) {
+        return {
+          heroValue: initialPot + villainRaiseAmount,
+          villainValue: -villainRaiseAmount
+        };
+      } else if (heroAction == 'bet-3bet' && villainAction.endsWith('raise-call')) {
+        return {
+          heroValue: equity * (initialPot + 2 * hero3betAmount) - hero3betAmount,
+          villainValue: (1 - equity) * (initialPot + 2 * hero3betAmount) - hero3betAmount
+        };
+      } else{
+        throw new Error('Unsupported action combination: ' + heroAction + ', ' + villainAction);
+      }
     } else {
-      // Someone folded - assign pot to non-folding player
-      if (heroAction.endsWith('fold') && (heroAction !== 'bet-fold' || !villainAction.endsWith('/fold')) ||
-          (villainAction.includes('bet') && heroAction === 'check-call')) {
-        // Hero folded
-        return {
-          heroValue: -heroBets,
-          villainValue: totalPot - villainBets
-        };
-      } else {
-        // Villain folded
-        return {
-          heroValue: totalPot - heroBets,
-          villainValue: -villainBets
-        };
-      }
+      throw new Error('Unsupported maxActions level: ' + state.maxActions);
     }
-  };
+
+  }
 
   // Helper function to calculate payoffs
   const calculatePayoffs = (heroAmount: number, villainAmount: number) => {

@@ -1,5 +1,6 @@
 export interface GameState {
   useLogUtility: 'linear' | 'logarithmic';
+  maxActions: number;         // Maximum number of actions (2, 3, or 4)
   heroStack: number;          // Hero stack size in BB
   villainStack: number;       // Villain stack size in BB
   potSize: number;           // Initial pot size in big blinds
@@ -13,29 +14,40 @@ export interface GameState {
   equities: string;          // Comma-separated equities for each range combination
 }
 
-export const index = [
-  'check-fold',
-  'check-call',
-  'check-raise',
-  'bet-fold',
-  'bet-call',
-  'bet-3bet'
-] as string[];
+export const getHeroActions = (maxActions: number): string[] => {
+  switch (maxActions) {
+    case 2:
+      return ['check', 'bet'];
+    case 3:
+      return ['check-fold', 'check-call', 'bet-fold', 'bet-call'];
+    case 4:
+      return ['check-fold', 'check-call', 'check-raise', 'bet-fold', 'bet-call', 'bet-3bet'];
+    default:
+      return [];
+  }
+};
 
-export const columns = [
-  'check/fold',
-  'check/call',
-  'check/raise-fold',
-  'check/raise-call',
-  'bet-fold/fold',
-  'bet-fold/call',
-  'bet-fold/raise-fold',
-  'bet-fold/raise-call',
-  'bet-call/fold',
-  'bet-call/call',
-  'bet-call/raise-fold',
-  'bet-call/raise-call'
-] as string[];
+export const getVillainActions = (maxActions: number): string[] => {
+  switch (maxActions) {
+    case 2:
+      return [
+        'check/fold',
+        'check/call'
+      ];
+    case 3:
+      return [
+        'check/fold', 'check/call', 'check/raise',
+        'bet/fold', 'bet/call', 'bet/raise'
+      ];
+    case 4:
+      return [
+        'check/fold', 'check/call', 'check/raise-fold', 'check/raise-call',
+        'bet-fold/fold', 'bet-fold/call', 'bet-fold/raise-fold', 'bet-fold/raise-call',
+        'bet-call/fold', 'bet-call/call', 'bet-call/raise-fold', 'bet-call/raise-call',
+      ];
+    default:
+      return [];
+  }
+};
 
-export type Index = typeof index[number];
-export type Column = typeof columns[number];
+// Everything needed is in getHeroActions and getVillainActions

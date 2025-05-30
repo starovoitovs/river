@@ -5,8 +5,8 @@ import { useNavigate } from 'react-router-dom';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import Plot from 'react-plotly.js';
 import { calculateMatrix, solveGame } from '../utils';
+import { getHeroActions, getVillainActions } from '../types';
 import type { GameState } from '../types';
-import { index, columns } from '../types';
 
 const DRAWER_WIDTH = 280;
 const ANNOTATION_THRESHOLD = 0.01; // Threshold for probabilities in mixed strategies so that we display asterisk
@@ -15,6 +15,7 @@ export default function Home() {
   const navigate = useNavigate();
   const [gameState, setGameState] = useState<GameState>({
     useLogUtility: 'linear',
+    maxActions: 4,
     heroStack: 100,
     villainStack: 100,
     potSize: 20,
@@ -23,9 +24,9 @@ export default function Home() {
     hero3bet: 1.0,
     villainBet: 1.0,
     villainRaise: 1.0,
-    heroRanges: '0.3, 0.7',
-    villainRanges: '0.4, 0.6',
-    equities: '0.7, 0.3\n0.1, 0.9'
+    heroRanges: '45, 55',
+    villainRanges: '55, 45',
+    equities: '53, 100\n0, 53'
   });
 
   const [matrix, setMatrix] = useState<{
@@ -64,8 +65,8 @@ export default function Home() {
       }
       const sum = probs.reduce((a, b) => a + b, 0);
       const tolerance = 0.001;
-      if (Math.abs(sum - 1.0) > tolerance) {
-        return [false, `Values must sum to 1 (current sum: ${sum.toFixed(3)})`];
+      if (Math.abs(sum - 100.0) > tolerance) {
+        return [false, `Values must sum to 100 (current sum: ${sum.toFixed(1)})`];
       }
       return [true, ""];
     } catch {
@@ -73,30 +74,36 @@ export default function Home() {
     }
   };
 
-  const validateEquitiesMatrix = (equitiesStr: string, heroRanges: string, villainRanges: string): boolean => {
+  const validateEquitiesMatrix = (equitiesStr: string, heroRanges: string, villainRanges: string): [boolean, string] => {
     const heroCount = heroRanges.split(',').length;
     const villainCount = villainRanges.split(',').length;
     
     const rows = equitiesStr.trim().split('\n');
-    if (rows.length !== heroCount) return false;
+    if (rows.length !== heroCount) {
+      return [false, `Matrix must have ${heroCount} rows`];
+    }
 
     for (const row of rows) {
       const values = row.split(',').map(s => Number(s.trim()));
-      if (values.length !== villainCount) return false;
-      if (values.some(isNaN)) return false;
-      if (values.some(v => v < 0 || v > 1)) return false;
+      if (values.length !== villainCount) {
+        return [false, `Each row must have ${villainCount} values`];
+      }
+      if (values.some(isNaN)) {
+        return [false, "All values must be numbers"];
+      }
+      if (values.some(v => v < 0 || v > 100)) {
+        return [false, "Values must be between 0 and 100 (e.g., 70 means hero wins 70% of the time)"];
+      }
     }
 
-    return true;
+    return [true, ""];
   };
 
   const handleCalculate = () => {
     const newErrors = {
       heroRanges: validateRanges(gameState.heroRanges)[1],
       villainRanges: validateRanges(gameState.villainRanges)[1],
-      equities: validateEquitiesMatrix(gameState.equities, gameState.heroRanges, gameState.villainRanges)
-        ? ""
-        : `Must be ${gameState.heroRanges.split(',').length}x${gameState.villainRanges.split(',').length} matrix with values between 0 and 1`
+      equities: validateEquitiesMatrix(gameState.equities, gameState.heroRanges, gameState.villainRanges)[1]
     };
 
     setErrors(newErrors);
@@ -180,31 +187,34 @@ export default function Home() {
     const heroRanges = gameState.heroRanges.split(',').length;
     const villainRanges = gameState.villainRanges.split(',').length;
     
+    const heroActions = getHeroActions(gameState.maxActions);
+    const villainActions = getVillainActions(gameState.maxActions);
+    
     // Generate hero labels (e.g., "H1:cf,H2:bc")
     const heroLabels: string[] = [];
-    for (let i = 0; i < Math.pow(6, heroRanges); i++) {
+    for (let i = 0; i < Math.pow(heroActions.length, heroRanges); i++) {
       let strategy = [];
       let temp = i;
       for (let r = 0; r < heroRanges; r++) {
-        const action = index[temp % 6];
+        const action = heroActions[temp % heroActions.length];
         // Abbreviate actions
         const shortAction = action
           .split('-')
-          .map(part => part[0] + (part[1] || ''))
+          .map((part: string) => part[0] + (part[1] || ''))
           .join('-');
         strategy.push(`H${r+1}:${shortAction}`);
-        temp = Math.floor(temp / 6);
+        temp = Math.floor(temp / heroActions.length);
       }
       heroLabels.push(strategy.join(','));
     }
 
     // Generate villain labels with abbreviated actions
     const villainLabels: string[] = [];
-    for (let i = 0; i < Math.pow(12, villainRanges); i++) {
+    for (let i = 0; i < Math.pow(villainActions.length, villainRanges); i++) {
       let strategy = [];
       let temp = i;
       for (let r = 0; r < villainRanges; r++) {
-        const fullAction = columns[temp % 12];
+        const fullAction = villainActions[temp % villainActions.length];
         // Split into base action and response
         const [baseAction, response] = fullAction.split('/');
         
@@ -219,6 +229,8 @@ export default function Home() {
           .replace('raise-fold', 'ra-fo')
           .replace('raise-call', 'ra-ca')
           .replace('check', 'ch')
+          .replace('bet', 'be')
+          .replace('raise', 'ra')
           .replace('fold', 'fo')
           .replace('call', 'ca');
 
@@ -233,13 +245,15 @@ export default function Home() {
           .replace('raise-fold', 'ra-fo')
           .replace('raise-call', 'ra-ca')
           .replace('check', 'ch')
+          .replace('bet', 'be')
+          .replace('raise', 'ra')
           .replace('fold', 'fo')
           .replace('call', 'ca');
 
         // Combine with slash
         const shortAction = shortBaseAction + (response ? '/' + shortResponse : '');
         strategy.push(`V${r+1}:${shortAction}`);
-        temp = Math.floor(temp / 12);
+        temp = Math.floor(temp / villainActions.length);
       }
       villainLabels.push(strategy.join(','));
     }
@@ -287,7 +301,7 @@ export default function Home() {
           <Box sx={{ px: 2, mb: 1, mt: 1, display: 'flex', alignItems: 'center' }}>
             <Typography variant="body1" sx={{ mr: 0, fontWeight: 500 }}>Payoff</Typography>
             <IconButton
-              onClick={() => navigate('/help#1-payoff-type')}
+              onClick={() => navigate('/help#payoff-type')}
               size="small"
               sx={{ mr: 2 }}
             >
@@ -304,14 +318,14 @@ export default function Home() {
             </Select>
           </Box>
 
-          <Accordion expanded={expanded === 'stack-and-pot'} onChange={handleAccordionChange('stack-and-pot')}>
+          <Accordion expanded={expanded === 'stack-and-pot'} onChange={handleAccordionChange('stack-and-pot')} elevation={0}>
             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
               <Box sx={{ display: 'flex', alignItems: 'center' }}>
                 <Typography variant="body1" sx={{fontWeight: 500}}>Stack and Pot</Typography>
                 <IconButton
                   onClick={(e) => {
                     e.stopPropagation();
-                    navigate('/help#2-stack-and-pot-settings');
+                    navigate('/help#stack-and-pot-settings');
                   }}
                   size="small"
                   sx={{ ml: 1 }}
@@ -330,14 +344,14 @@ export default function Home() {
             </AccordionDetails>
           </Accordion>
 
-          <Accordion expanded={expanded === 'range-settings'} onChange={handleAccordionChange('range-settings')}>
+          <Accordion expanded={expanded === 'range-settings'} onChange={handleAccordionChange('range-settings')} elevation={0}>
             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
               <Box sx={{ display: 'flex', alignItems: 'center' }}>
                 <Typography variant="body1" sx={{fontWeight: 500}}>Range Settings</Typography>
                 <IconButton
                   onClick={(e) => {
                     e.stopPropagation();
-                    navigate('/help#3-range-settings');
+                    navigate('/help#range-settings');
                   }}
                   size="small"
                   sx={{ ml: 1 }}
@@ -372,7 +386,7 @@ export default function Home() {
                 error={!!errors.villainRanges}
               />
               <TextField
-                label="Hero Equities' Matrix"
+                label="Hero Equities"
                 value={gameState.equities}
                 onChange={(e) => setGameState(prev => ({ ...prev, equities: e.target.value }))}
                 fullWidth
@@ -385,14 +399,14 @@ export default function Home() {
             </AccordionDetails>
           </Accordion>
 
-          <Accordion expanded={expanded === 'bet-sizing'} onChange={handleAccordionChange('bet-sizing')}>
+          <Accordion expanded={expanded === 'bet-sizing'} onChange={handleAccordionChange('bet-sizing')} elevation={0}>
             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
               <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                <Typography variant="body1" sx={{fontWeight: 500}}>Bet sizing</Typography>
+                <Typography variant="body1" sx={{fontWeight: 500}}>Actions and bets</Typography>
                 <IconButton
                   onClick={(e) => {
                     e.stopPropagation();
-                    navigate('/help#4-bet-sizing');
+                    navigate('/help#actions-and-bets');
                   }}
                   size="small"
                   sx={{ ml: 1 }}
@@ -402,16 +416,35 @@ export default function Home() {
               </Box>
             </AccordionSummary>
             <AccordionDetails>
+              {createSlider('Max Actions', 'maxActions', 2, 4, 1,
+                value => `${value} actions`)}
+                
+              {/* Always show hero bet */}
+              <Typography variant="body1" sx={{ mb: 1, mt: 2, fontWeight: 500 }}>First action</Typography>
               {createSlider('Hero Bet (pot %)', 'heroBet', 0.1, 2, 0.1,
                 value => `${(value * 100).toFixed(0)}% (${amounts.heroBet} BB)`)}
-              {createSlider('Hero Raise (pot %)', 'heroRaise', 0.1, 2, 0.1,
-                value => `${(value * 100).toFixed(0)}% (${amounts.heroRaise} BB)`)}
-              {createSlider('Hero 3-Bet (pot %)', 'hero3bet', 0.1, 2, 0.1,
-                value => `${(value * 100).toFixed(0)}% (${amounts.hero3bet} BB)`)}
-              {createSlider('Villain Bet (pot %)', 'villainBet', 0.1, 2, 0.1,
-                value => `${(value * 100).toFixed(0)}% (${amounts.villainBet} BB)`)}
-              {createSlider('Villain Raise (pot %)', 'villainRaise', 0.1, 2, 0.1,
-                value => `${(value * 100).toFixed(0)}% (${amounts.villainRaise} BB)`)}
+
+              {/* Show hero raise and villain bet/raise for maxActions >= 3 */}
+              {gameState.maxActions >= 3 && (
+                <>
+                  <Typography variant="body1" sx={{ mb: 1, mt: 2, fontWeight: 500 }}>Second action</Typography>
+                  {createSlider('Villain Bet (pot %)', 'villainBet', 0.1, 2, 0.1,
+                    value => `${(value * 100).toFixed(0)}% (${amounts.villainBet} BB)`)}
+                  {createSlider('Villain Raise (pot %)', 'villainRaise', 0.1, 2, 0.1,
+                    value => `${(value * 100).toFixed(0)}% (${amounts.villainRaise} BB)`)}
+                </>
+              )}
+
+              {/* Show hero 3-bet for maxActions = 4 */}
+              {gameState.maxActions === 4 && (
+                <>
+                  <Typography variant="body1" sx={{ mb: 1, mt: 2, fontWeight: 500 }}>Third action</Typography>
+                  {createSlider('Hero Raise (pot %)', 'heroRaise', 0.1, 2, 0.1,
+                    value => `${(value * 100).toFixed(0)}% (${amounts.heroRaise} BB)`)}
+                  {createSlider('Hero 3-Bet (pot %)', 'hero3bet', 0.1, 2, 0.1,
+                    value => `${(value * 100).toFixed(0)}% (${amounts.hero3bet} BB)`)}
+                </>
+              )}
             </AccordionDetails>
           </Accordion>
         </Box>
@@ -424,6 +457,7 @@ export default function Home() {
           padding: 2,
           backgroundColor: 'background.paper',
           borderTop: 1,
+          borderRight: 1,
           borderColor: 'divider'
         }}>
           <Button
@@ -439,70 +473,8 @@ export default function Home() {
 
       <Box component="main" sx={{ flexGrow: 1, p: 2 }}>
 
-        <Box>
-          {solution && (
-            <Typography variant="body1" sx={{ fontWeight: 500, fontSize: '1.1rem' }} gutterBottom>
-              Game Matrix (Hero: {solution.heroUtility.toFixed(2)}, Villain: {solution.villainUtility.toFixed(2)})
-              <IconButton
-          onClick={() => navigate('/help#game-matrix-and-strategies')}
-          size="small"
-              >
-          <HelpOutlineIcon fontSize="small" />
-              </IconButton>
-            </Typography>
-          )}
-
-          <Plot
-                data={[
-                  {
-                z: reversedMatrix.map(row => row.map(vals => vals.hero)), // Color based on hero values
-                x: villainLabels,
-                y: [...heroLabels].reverse(),
-                type: 'heatmap' as const,
-                colorscale: 'RdBu',
-                hoverongaps: false,
-                showscale: true,
-                customdata: reversedMatrix.map(row => row.map(vals => vals.villain)),
-                hovertemplate: `
-                  Values (Hero, Villain): (%{z:.1f}, %{customdata:.1f})<br>
-                  Strategy:<br>
-                  Hero: %{y}<br>
-                  Villain: %{x}
-                  <extra></extra>
-                `,
-              }
-            ]}
-            layout={{
-              ...commonPlotLayout,
-              font: { ...commonPlotLayout.font, size: 10 },
-              width: window.innerWidth - DRAWER_WIDTH - 80,
-              height: 600, // increased height for more space
-              xaxis: {
-                tickangle: -90,
-                automargin: true,
-                tickfont: { size: 7 }, // Smaller font
-                tickvals: Array.from({length: villainLabels.length}, (_, i) => i),
-                ticktext: villainLabels.map((label, i) =>
-                  (solution && solution!.col_strategy[i] > ANNOTATION_THRESHOLD ? '* ' : '') + label
-                ),
-                side: 'bottom'
-              },
-              yaxis: {
-                tickangle: 0,
-                automargin: true,
-                tickfont: { size: 7 },
-                tickvals: Array.from({length: heroLabels.length}, (_, i) => i),
-                ticktext: [...heroLabels].reverse().map((label, i) =>
-                  (solution && solution!.row_strategy[heroLabels.length - 1 - i] > ANNOTATION_THRESHOLD ? '* ' : '') + label
-                ),
-              },
-              margin: commonPlotLayout.margin,
-            }}
-          />
-        </Box>
-
         {solution && (
-          <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 3, mb: 3 }}>
+          <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 3 }}>
             <Box>
               <Typography variant="body1" sx={{fontWeight: 500}} gutterBottom>Hero Strategy
               <IconButton
@@ -541,7 +513,7 @@ export default function Home() {
               layout={{
                 ...commonPlotLayout,
                 width: (window.innerWidth - DRAWER_WIDTH - 100) / 2,
-                height: 400,
+                height: 300,
                 xaxis: {
                   automargin: true,
                   tickfont: { size: 9 },
@@ -597,7 +569,7 @@ export default function Home() {
               layout={{
                 ...commonPlotLayout,
                 width: (window.innerWidth - DRAWER_WIDTH - 100) / 2,
-                height: 400,
+                height: 300,
                 xaxis: {
                   automargin: true,
                   tickfont: { size: 9 },
@@ -616,6 +588,70 @@ export default function Home() {
             </Box>
           </Box>
         )}
+
+        <Box>
+          {solution && (
+            <Typography variant="body1" sx={{ fontWeight: 500 }} gutterBottom>
+              Game Matrix (Hero: {solution.heroUtility.toFixed(2)}, Villain: {solution.villainUtility.toFixed(2)})
+              <IconButton
+          onClick={() => navigate('/help#game-matrix-and-strategies')}
+          size="small"
+              >
+          <HelpOutlineIcon fontSize="small" />
+              </IconButton>
+            </Typography>
+          )}
+
+          <Plot
+            data={[
+              {
+                z: reversedMatrix.map(row => row.map(vals => vals.hero)), // Color based on hero values
+                x: villainLabels,
+                y: [...heroLabels].reverse(),
+                type: 'heatmap' as const,
+                colorscale: 'RdBu',
+                hoverongaps: false,
+                showscale: true,
+                customdata: reversedMatrix.map(row => row.map(vals => vals.villain)),
+                hovertemplate: `
+                  Values (Hero, Villain): (%{z:.1f}, %{customdata:.1f})<br>
+                  Strategy:<br>
+                  Hero: %{y}<br>
+                  Villain: %{x}
+                  <extra></extra>
+                `,
+              }
+            ]}
+            layout={{
+              ...commonPlotLayout,
+              font: { ...commonPlotLayout.font, size: 10 },
+              width: window.innerWidth - DRAWER_WIDTH - 80,
+              height: 600, // increased height for more space
+              xaxis: {
+                tickangle: -90,
+                automargin: true,
+                tickfont: { size: 7 }, // Smaller font
+                tickvals: Array.from({length: villainLabels.length}, (_, i) => i),
+                ticktext: villainLabels.map((label, i) =>
+                  (solution && solution!.col_strategy[i] > ANNOTATION_THRESHOLD ? '* ' : '') + label
+                ),
+                side: 'bottom'
+              },
+              yaxis: {
+                tickangle: 0,
+                automargin: true,
+                tickfont: { size: 7 },
+                tickvals: Array.from({length: heroLabels.length}, (_, i) => i),
+                ticktext: [...heroLabels].reverse().map((label, i) =>
+                  (solution && solution!.row_strategy[heroLabels.length - 1 - i] > ANNOTATION_THRESHOLD ? '* ' : '') + label
+                ),
+              },
+              margin: commonPlotLayout.margin,
+            }}
+          />
+        </Box>
+
+
       </Box>
     </Box>
   );

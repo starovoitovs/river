@@ -67,17 +67,24 @@ The inputs in the range settings would be then:
 
 ```
 Hero Range Probabilities:
-0.45, 0.55
+45, 55
 
 Villain Range Probabilities:
-0.55, 0.45
+55, 45
 
 Hero Equities' Matrix:
-0.53, 1.00
-0.00, 0.53
+53, 100
+0, 53
 ```
 
-### Bet Sizing
+### Actions and bets
+
+#### Max actions
+
+Specifies how many total actions for Hero and Villain can take place (basically the number of levels in the game tree above). If less actions, there are less strategies to be considered by the players, and the game matrix is smaller.
+
+#### Bet sizes
+
 Specify anticipated bet sizes as pot percentages. The amounts in brackets are the total bet amounts after the respective action.
 
 Example calculation:
