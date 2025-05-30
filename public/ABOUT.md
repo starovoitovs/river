@@ -25,22 +25,6 @@ We approximate the Nash Equilibrium using fictitious play, as in the non-constan
 
 ## Configuration Options
 
-### Payoff Type
-
-#### Linear Payoff
-- Suitable for cash games with deep stacks
-- Uses raw expected chip value (EV)
-- Stack size irrelevant beyond certain depth
-- Focuses on absolute chip maximization
-
-#### Logarithmic Payoff
-- Appropriate for tournaments and short-stack scenarios
-- Based on Kelly criterion for bankroll management
-- Optimizes long-term capital growth rate
-- More conservative as bankroll decreases
-
-See [detailed discussion below](#advanced-considerations).
-
 ### Stack and Pot Settings
 - **Stack Size**: Your current stack before the street (before river in our case)
 - **Pot Size**: Amount in pot before the street (before river in our case)
@@ -100,6 +84,22 @@ Initial Pot: 20BB
 3. Hero 3-bets 100% pot:
    20BB (initial) + 60BB (call, pot becomes 180BB) + 180BB (raise 100% pot) = 260BB total bet amount
 ```
+
+#### Payoff Type
+
+* **Linear Payoff**
+   - Suitable for cash games with deep stacks
+   - Uses raw expected chip value (EV)
+   - Stack size irrelevant beyond certain depth
+   - Focuses on absolute chip maximization
+
+* **Logarithmic Payoff**
+   - Appropriate for tournaments and short-stack scenarios
+   - Based on Kelly criterion for bankroll management
+   - Optimizes long-term capital growth rate
+   - More conservative as bankroll decreases
+
+See [detailed discussion below](#advanced-considerations).
 
 ### Solver settings
 

@@ -314,27 +314,8 @@ export default function Home() {
       >
         <Toolbar variant="dense"/> {/* Add spacing for fixed AppBar */}
         <Box sx={{ overflowX: 'hidden', height: '100%' }}>
-          <Box sx={{ px: 2, mb: 1, mt: 1, display: 'flex', alignItems: 'center' }}>
-            <Typography variant="body1" sx={{ mr: 0, fontWeight: 500 }}>Payoff</Typography>
-            <IconButton
-              onClick={() => navigate('/help#payoff-type')}
-              size="small"
-              sx={{ mr: 2 }}
-            >
-              <HelpOutlineIcon fontSize="small" />
-            </IconButton>
-            <Select
-              size="small"
-              value={gameState.useLogUtility}
-              onChange={(e) => setGameState(prev => ({ ...prev, useLogUtility: e.target.value }))}
-              sx={{ minWidth: 120, mr: 1, fontSize: '0.875rem' }}
-            >
-              <MenuItem value="linear">Linear</MenuItem>
-              <MenuItem value="logarithmic">Logarithmic</MenuItem>
-            </Select>
-          </Box>
 
-          <Accordion expanded={expanded === 'stack-and-pot'} onChange={handleAccordionChange('stack-and-pot')} elevation={0}>
+          <Accordion expanded={expanded === 'stack-and-pot'} onChange={handleAccordionChange('stack-and-pot')} elevation={0} sx={{ '&.Mui-expanded::before': { opacity: '1 !important'}}}>
             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
               <Box sx={{ display: 'flex', alignItems: 'center' }}>
                 <Typography variant="body1" sx={{fontWeight: 500}}>Stack and Pot</Typography>
@@ -360,7 +341,7 @@ export default function Home() {
             </AccordionDetails>
           </Accordion>
 
-          <Accordion expanded={expanded === 'range-settings'} onChange={handleAccordionChange('range-settings')} elevation={0}>
+          <Accordion expanded={expanded === 'range-settings'} onChange={handleAccordionChange('range-settings')} elevation={0} sx={{ '&.Mui-expanded::before': { opacity: '1 !important'}}}>
             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
               <Box sx={{ display: 'flex', alignItems: 'center' }}>
                 <Typography variant="body1" sx={{fontWeight: 500}}>Range Settings</Typography>
@@ -415,7 +396,7 @@ export default function Home() {
             </AccordionDetails>
           </Accordion>
 
-          <Accordion expanded={expanded === 'bet-sizing'} onChange={handleAccordionChange('bet-sizing')} elevation={0}>
+          <Accordion expanded={expanded === 'bet-sizing'} onChange={handleAccordionChange('bet-sizing')} elevation={0} sx={{ '&.Mui-expanded::before': { opacity: '1 !important'}}}>
             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
               <Box sx={{ display: 'flex', alignItems: 'center' }}>
                 <Typography variant="body1" sx={{fontWeight: 500}}>Actions and Bets</Typography>
@@ -461,10 +442,25 @@ export default function Home() {
                     value => `${(value * 100).toFixed(0)}% (${amounts.hero3bet} BB)`)}
                 </>
               )}
-            </AccordionDetails>
+
+              <Box sx={{ mb: 1, mt: 3 }}>
+                <Select
+                  size="small"
+                  value={gameState.useLogUtility}
+                  onChange={(e) => setGameState(prev => ({ ...prev, useLogUtility: e.target.value }))}
+                  sx={{ minWidth: 120, fontSize: '0.875rem', '& legend span': {opacity: 1, visibility: 'visible', marginTop: '-5px', display: 'block' } }}
+                  fullWidth
+                  displayEmpty
+                  inputProps={{ 'aria-label': 'Payoff' }}
+                  label="Payoff"
+                >
+                  <MenuItem value="linear">Linear</MenuItem>
+                  <MenuItem value="logarithmic">Logarithmic</MenuItem>
+                </Select>
+              </Box>  </AccordionDetails>
           </Accordion>
 
-          <Accordion expanded={expanded === 'solver-settings'} onChange={handleAccordionChange('solver-settings')} elevation={0}>
+          <Accordion expanded={expanded === 'solver-settings'} onChange={handleAccordionChange('solver-settings')} elevation={0} sx={{ '&.Mui-expanded::before': { opacity: '1 !important'}}}>
             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
               <Box sx={{ display: 'flex', alignItems: 'center' }}>
                 <Typography variant="body1" sx={{fontWeight: 500}}>Solver Settings</Typography>
@@ -487,6 +483,7 @@ export default function Home() {
                 value => value.toFixed(2))}
             </AccordionDetails>
           </Accordion>
+
         </Box>
 
         {/* Fixed Calculate Button */}
