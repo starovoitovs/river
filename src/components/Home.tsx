@@ -56,12 +56,20 @@ export default function Home() {
     equities: ""
   });
 
-  const validateRanges = (probStr: string): boolean => {
+  const validateRanges = (probStr: string): [boolean, string] => {
     try {
       const probs = probStr.split(',').map(s => Number(s.trim()));
-      return !probs.some(isNaN) && !probs.some(p => p < 0);
+      if (probs.some(isNaN) || probs.some(p => p < 0)) {
+        return [false, "All values must be non-negative numbers"];
+      }
+      const sum = probs.reduce((a, b) => a + b, 0);
+      const tolerance = 0.001;
+      if (Math.abs(sum - 1.0) > tolerance) {
+        return [false, `Values must sum to 1 (current sum: ${sum.toFixed(3)})`];
+      }
+      return [true, ""];
     } catch {
-      return false;
+      return [false, "Invalid input format"];
     }
   };
 
@@ -84,12 +92,8 @@ export default function Home() {
 
   const handleCalculate = () => {
     const newErrors = {
-      heroRanges: validateRanges(gameState.heroRanges)
-        ? ""
-        : "Enter valid comma-separated numbers",
-      villainRanges: validateRanges(gameState.villainRanges)
-        ? ""
-        : "Enter valid comma-separated numbers",
+      heroRanges: validateRanges(gameState.heroRanges)[1],
+      villainRanges: validateRanges(gameState.villainRanges)[1],
       equities: validateEquitiesMatrix(gameState.equities, gameState.heroRanges, gameState.villainRanges)
         ? ""
         : `Must be ${gameState.heroRanges.split(',').length}x${gameState.villainRanges.split(',').length} matrix with values between 0 and 1`
@@ -98,7 +102,10 @@ export default function Home() {
     setErrors(newErrors);
 
     // Only calculate if there are no errors
-    if (!Object.values(newErrors).some(error => error !== "")) {
+    const [heroValid] = validateRanges(gameState.heroRanges);
+    const [villainValid] = validateRanges(gameState.villainRanges);
+
+    if (heroValid && villainValid && !newErrors.equities) {
       const newMatrix = calculateMatrix(gameState);
       setMatrix(newMatrix);
       setSolution(solveGame(newMatrix));
