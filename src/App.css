@@ -41,3 +41,15 @@ html {
 .read-the-docs {
   color: #888;
 }
+
+.MuiAccordion-root {
+    border-radius: 0 !important;
+}
+.MuiAccordion-root.Mui-expanded {
+  margin-top: 0px !important;
+  margin-bottom: 0px !important;
+}
+
+.MuiAccordionSummary-root.Mui-expanded {
+  min-height: 54px !important;
+}

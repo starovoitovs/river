@@ -1,4 +1,4 @@
-import type { GameState, Index, Column } from './types';
+import type { GameState } from './types';
 import { index, columns } from './types';
 import { create, all } from 'mathjs';
 
@@ -23,111 +23,161 @@ export function calculateMatrix(state: GameState) {
     hero3bet,
     villainBet,
     villainRaise,
-    pwinInitial,
-    pwinAfterVillainBet,
-    pwinAfterVillainRaise
+    heroRanges,
+    villainRanges,
+    equities
   } = state;
 
-  // Calculate initial pot in BB
+  // Parse range probabilities and equities matrix
+  const heroRangeProbs = heroRanges.split(',').map(Number);
+  const villainRangeProbs = villainRanges.split(',').map(Number);
+  const equityMatrix = equities.split('\n').map(row => row.split(',').map(Number));
+
+  // Calculate pot and bet sizes
   const initialPot = potSize;
+  const heroBetAmount = initialPot * heroBet;
+  const villainBetAmount = initialPot * villainBet;
+  const potAfterVillainBet = initialPot + 2 * villainBetAmount;
+  const heroRaiseAmount = villainBetAmount + (potAfterVillainBet * heroRaise);
+  const potAfterHeroBet = initialPot + 2 * heroBetAmount;
+  const villainRaiseAmount = heroBetAmount + (potAfterHeroBet * villainRaise);
+  const potAfterVillainRaise = potAfterHeroBet + 2 * (villainRaiseAmount - heroBetAmount);
+  const hero3betAmount = villainRaiseAmount + (potAfterVillainRaise * hero3bet);
 
-  // Helper function to calculate sequential bet sizes
-  const calculateBetSequence = (pot: number, ...fractions: number[]) => {
-    let currentPot = pot;
-    let totalBet = 0;
+  // Generate all possible range-action combinations
+  const generateStrategies = (ranges: number, actions: string[]): [number, string][][] => {
+    const result: [number, string][][] = [];
+    const strategy = new Array(ranges).fill(0);
+    
+    const generate = (pos: number) => {
+      if (pos === ranges) {
+        result.push(strategy.map((actionIndex, rangeIndex) =>
+          [rangeIndex, actions[actionIndex]] as [number, string]
+        ));
+        return;
+      }
+      for (let i = 0; i < actions.length; i++) {
+        strategy[pos] = i;
+        generate(pos + 1);
+      }
+    };
+    
+    generate(0);
+    return result;
+  };
+  
+  const heroStrategies = generateStrategies(heroRangeProbs.length, index);
+  const villainStrategies = generateStrategies(villainRangeProbs.length, columns);
 
-    return fractions.map(fraction => {
-      const betSize = currentPot * fraction;
-      totalBet += betSize;
-      currentPot += 2 * betSize; // Add bet and call to pot
-      return totalBet;
-    });
+  // Create payoff matrices
+  const heroMatrix = Array(heroStrategies.length).fill(0)
+    .map(() => Array(villainStrategies.length).fill(0));
+  const villainMatrix = Array(heroStrategies.length).fill(0)
+    .map(() => Array(villainStrategies.length).fill(0));
+
+  // Helper function to calculate payoffs based on actions
+  const getActionPayoffs = (heroAction: string, villainAction: string, equity: number) => {
+    let heroBets = 0;     // Total amount hero has bet
+    let villainBets = 0;  // Total amount villain has bet
+    let isShowdown = false;
+    
+    // Calculate all bets made in the sequence
+    if (heroAction.startsWith('bet')) {
+      heroBets += heroBetAmount;
+      if (heroAction === 'bet-3bet' && villainAction.includes('raise')) {
+        if (villainAction.includes('call')) {
+          heroBets += hero3betAmount - heroBetAmount;  // Additional amount for 3bet
+          villainBets += hero3betAmount;  // Villain calls full 3bet amount
+        } else {
+          villainBets += villainRaiseAmount;  // Villain only made raise
+        }
+      } else if (villainAction.includes('raise') && !heroAction.includes('3bet')) {
+        villainBets += villainRaiseAmount;  // Villain raised
+      } else if (villainAction.includes('call')) {
+        villainBets += heroBetAmount;  // Villain called
+      }
+    } else if (heroAction.startsWith('check')) {
+      if (!villainAction.startsWith('check')) {
+        villainBets += villainBetAmount;  // Villain bet after check
+        if (heroAction === 'check-raise') {
+          if (villainAction.includes('call')) {
+            heroBets += heroRaiseAmount;
+            villainBets += heroRaiseAmount - villainBetAmount;  // Additional call amount
+          }
+        } else if (heroAction === 'check-call') {
+          heroBets += villainBetAmount;  // Hero called villain's bet
+        }
+      }
+    }
+
+    // Calculate pot size
+    const totalPot = initialPot + heroBets + villainBets;
+
+    // Determine showdown or fold
+    isShowdown = (
+      (heroAction === 'check-call' && villainAction.startsWith('check')) ||  // Both checked
+      (heroAction === 'check-call' && villainAction.includes('bet')) ||      // Bet-call
+      (heroAction === 'check-raise' && villainAction.includes('call')) ||    // Raise-call
+      (heroAction === 'bet-call' && villainAction.includes('call')) ||      // Bet-call
+      (heroAction === 'bet-3bet' && villainAction.includes('raise-call'))    // 3bet-call
+    );
+
+    if (isShowdown) {
+      // Split pot according to equity
+      return {
+        heroValue: equity * totalPot - heroBets,
+        villainValue: (1 - equity) * totalPot - villainBets
+      };
+    } else {
+      // Someone folded - assign pot to non-folding player
+      if (heroAction.endsWith('fold') && (heroAction !== 'bet-fold' || !villainAction.endsWith('/fold')) ||
+          (villainAction.includes('bet') && heroAction === 'check-call')) {
+        // Hero folded
+        return {
+          heroValue: -heroBets,
+          villainValue: totalPot - villainBets
+        };
+      } else {
+        // Villain folded
+        return {
+          heroValue: totalPot - heroBets,
+          villainValue: -villainBets
+        };
+      }
+    }
   };
 
-  const heroMatrix = Array(index.length).fill(0).map(() => Array(columns.length).fill(0));
-  const villainMatrix = Array(index.length).fill(0).map(() => Array(columns.length).fill(0));
-
-  // Helper function to calculate payoffs for both players
+  // Helper function to calculate payoffs
   const calculatePayoffs = (heroAmount: number, villainAmount: number) => {
     const heroUtility = calculateUtility(heroAmount, useLogUtility, heroStack);
     const villainUtility = calculateUtility(villainAmount, useLogUtility, villainStack);
     return { heroUtility, villainUtility };
   };
 
-  // Helper function to set matrix values
-  const setValues = (rows: Index[], cols: Column[], heroValue: number, villainValue: number) => {
-    rows.forEach(row => {
-      cols.forEach(col => {
-        const rowIndex = index.indexOf(row);
-        const colIndex = columns.indexOf(col);
-        if (rowIndex !== -1 && colIndex !== -1) {
-          const { heroUtility, villainUtility } = calculatePayoffs(heroValue, villainValue);
-          heroMatrix[rowIndex][colIndex] = heroUtility;
-          villainMatrix[rowIndex][colIndex] = villainUtility;
-        }
+  // Calculate matrix entries
+  heroStrategies.forEach((heroStrategy, i) => {
+    villainStrategies.forEach((villainStrategy, j) => {
+      let totalHeroValue = 0;
+      let totalVillainValue = 0;
+
+      // Calculate payoff for each range combination
+      heroStrategy.forEach(([heroRange, heroAction]) => {
+        villainStrategy.forEach(([villainRange, villainAction]) => {
+          const equity = equityMatrix[heroRange][villainRange];
+          const probability = heroRangeProbs[heroRange] * villainRangeProbs[villainRange];
+          const { heroValue, villainValue } = getActionPayoffs(heroAction, villainAction, equity);
+
+          totalHeroValue += heroValue * probability;
+          totalVillainValue += villainValue * probability;
+        });
       });
+
+      const { heroUtility, villainUtility } = calculatePayoffs(totalHeroValue, totalVillainValue);
+      heroMatrix[i][j] = heroUtility;
+      villainMatrix[i][j] = villainUtility;
+
     });
-  };
-
-  // Calculate bet sequences
-  const [heroBetAmount] = calculateBetSequence(initialPot, heroBet);
-  const [villainBetAmount] = calculateBetSequence(initialPot, villainBet);
-  const [heroRaiseAfterBet] = calculateBetSequence(initialPot + 2 * villainBetAmount, heroRaise);
-  const [villainRaiseAmount] = calculateBetSequence(initialPot + 2 * heroBetAmount, villainRaise);
-  const [hero3betAmount] = calculateBetSequence(
-    initialPot + 2 * heroBetAmount + 2 * villainRaiseAmount,
-    hero3bet
-  );
-
-  // Initial check situations
-  setValues(
-    ['check-fold', 'check-call', 'check-raise'],
-    ['check/fold', 'check/call', 'check/raise-fold', 'check/raise-call'],
-    pwinInitial * initialPot,
-    (1 - pwinInitial) * initialPot
-  );
-
-  // Check against bet scenarios
-  setValues(['check-fold'], ['bet-fold/fold', 'bet-fold/call', 'bet-fold/raise-fold', 'bet-fold/raise-call'],
-    0, initialPot);
-  setValues(['check-call'], ['bet-fold/fold', 'bet-fold/call', 'bet-fold/raise-fold', 'bet-fold/raise-call'],
-    pwinAfterVillainBet * (initialPot + villainBetAmount) - (1 - pwinAfterVillainBet) * villainBetAmount,
-    (1 - pwinAfterVillainBet) * (initialPot + villainBetAmount) - pwinAfterVillainBet * villainBetAmount);
-  setValues(['check-raise'], ['bet-fold/fold', 'bet-fold/call', 'bet-fold/raise-fold', 'bet-fold/raise-call'],
-    initialPot + villainBetAmount, -villainBetAmount);
-
-  setValues(['check-fold'], ['bet-call/fold', 'bet-call/call', 'bet-call/raise-fold', 'bet-call/raise-call'],
-    0, initialPot);
-  setValues(['check-call'], ['bet-call/fold', 'bet-call/call', 'bet-call/raise-fold', 'bet-call/raise-call'],
-    pwinAfterVillainBet * (initialPot + villainBetAmount) - (1 - pwinAfterVillainBet) * villainBetAmount,
-    (1 - pwinAfterVillainBet) * (initialPot + villainBetAmount) - pwinAfterVillainBet * villainBetAmount);
-  setValues(['check-raise'], ['bet-call/fold', 'bet-call/call', 'bet-call/raise-fold', 'bet-call/raise-call'],
-    pwinAfterVillainBet * (initialPot + villainBetAmount + heroRaiseAfterBet) - (1 - pwinAfterVillainBet) * (villainBetAmount + heroRaiseAfterBet),
-    (1 - pwinAfterVillainBet) * (initialPot + villainBetAmount + heroRaiseAfterBet) - pwinAfterVillainBet * (villainBetAmount + heroRaiseAfterBet));
-
-  // Bet scenarios
-  setValues(['bet-fold', 'bet-call', 'bet-3bet'], ['check/fold', 'bet-fold/fold', 'bet-call/fold'],
-    initialPot, 0);
-  setValues(['bet-fold', 'bet-call', 'bet-3bet'], ['check/call', 'bet-fold/call', 'bet-call/call'],
-    pwinInitial * (initialPot + heroBetAmount) - (1 - pwinInitial) * heroBetAmount,
-    (1 - pwinInitial) * (initialPot + heroBetAmount) - pwinInitial * heroBetAmount);
-
-  setValues(['bet-fold'], ['check/raise-fold', 'bet-fold/raise-fold', 'bet-call/raise-fold'],
-    -heroBetAmount, initialPot + heroBetAmount);
-  setValues(['bet-call'], ['check/raise-fold', 'bet-fold/raise-fold', 'bet-call/raise-fold'],
-    pwinAfterVillainRaise * (initialPot + heroBetAmount + villainRaiseAmount) - (1 - pwinAfterVillainRaise) * (heroBetAmount + villainRaiseAmount),
-    (1 - pwinAfterVillainRaise) * (initialPot + heroBetAmount + villainRaiseAmount) - pwinAfterVillainRaise * (heroBetAmount + villainRaiseAmount));
-  setValues(['bet-3bet'], ['check/raise-fold', 'bet-fold/raise-fold', 'bet-call/raise-fold'],
-    initialPot + villainRaiseAmount, -villainRaiseAmount);
-
-  setValues(['bet-fold'], ['check/raise-call', 'bet-fold/raise-call', 'bet-call/raise-call'],
-    -heroBetAmount, initialPot + heroBetAmount);
-  setValues(['bet-call'], ['check/raise-call', 'bet-fold/raise-call', 'bet-call/raise-call'],
-    pwinAfterVillainRaise * (initialPot + heroBetAmount + villainRaiseAmount) - (1 - pwinAfterVillainRaise) * (heroBetAmount + villainRaiseAmount),
-    (1 - pwinAfterVillainRaise) * (initialPot + heroBetAmount + villainRaiseAmount) - pwinAfterVillainRaise * (heroBetAmount + villainRaiseAmount));
-  setValues(['bet-3bet'], ['check/raise-call', 'bet-fold/raise-call', 'bet-call/raise-call'],
-    pwinAfterVillainRaise * (initialPot + heroBetAmount + villainRaiseAmount + hero3betAmount) - (1 - pwinAfterVillainRaise) * (heroBetAmount + villainRaiseAmount + hero3betAmount),
-    (1 - pwinAfterVillainRaise) * (initialPot + heroBetAmount + villainRaiseAmount + hero3betAmount) - pwinAfterVillainRaise * (heroBetAmount + villainRaiseAmount + hero3betAmount));
+  });
 
   return {
     heroMatrix,
@@ -141,50 +191,60 @@ export function solveGame(matrices: { heroMatrix: number[][], villainMatrix: num
   const rows = heroMatrix.length;
   const cols = heroMatrix[0].length;
   
-  let row_strategy = Array(rows).fill(1/rows);
-  let col_strategy = Array(cols).fill(1/cols);
+  // Initialize average strategies and current strategies
+  let row_avg_strategy = Array(rows).fill(1/rows);
+  let col_avg_strategy = Array(cols).fill(1/cols);
+  let row_current = Array(rows).fill(1/rows);
+  let col_current = Array(cols).fill(1/cols);
   
-  const iterations = 1000;
-  const learning_rate = 0.1;
+  const iterations = 1000;  // Increase iterations
+  const learning_rate = 0.5;  // More aggressive learning rate
   
   for (let i = 0; i < iterations; i++) {
-    // Update row player strategy based on hero matrix
-    const row_payoffs = row_strategy.map((_, r) =>
-      math.sum(heroMatrix[r].map((v, c) => v * col_strategy[c]))
+    // Calculate expected payoffs
+    const row_payoffs = row_current.map((_, r) =>
+      math.sum(heroMatrix[r].map((v, c) => v * col_avg_strategy[c]))
     );
-    const best_row = row_payoffs.indexOf(Math.max(...row_payoffs));
-    row_strategy = row_strategy.map((v, idx) =>
-      idx === best_row ? v + learning_rate * (1 - v) : v * (1 - learning_rate)
+    const col_payoffs = col_current.map((_, c) =>
+      math.sum(villainMatrix.map((r, i) => r[c] * row_avg_strategy[i]))
     );
+
+    // Find best responses
+    const max_row_payoff = Math.max(...row_payoffs);
+    const max_col_payoff = Math.max(...col_payoffs);
     
-    // Update column player strategy based on villain matrix
-    const col_payoffs = col_strategy.map((_, c) =>
-      math.sum(villainMatrix.map((r, i) => r[c] * row_strategy[i]))
-    );
-    const best_col = col_payoffs.indexOf(Math.max(...col_payoffs));
-    col_strategy = col_strategy.map((v, idx) =>
-      idx === best_col ? v + learning_rate * (1 - v) : v * (1 - learning_rate)
-    );
+    // Update current strategies with exponential weights
+    row_current = row_payoffs.map(p => Math.exp((p - max_row_payoff) / learning_rate));
+    col_current = col_payoffs.map(p => Math.exp((p - max_col_payoff) / learning_rate));
     
-    // Normalize strategies
-    const row_sum = math.sum(row_strategy);
-    const col_sum = math.sum(col_strategy);
-    row_strategy = row_strategy.map(v => v / row_sum);
-    col_strategy = col_strategy.map(v => v / col_sum);
+    // Normalize current strategies
+    const row_sum = math.sum(row_current);
+    const col_sum = math.sum(col_current);
+    row_current = row_current.map(v => v / row_sum);
+    col_current = col_current.map(v => v / col_sum);
+    
+    // Update average strategies with decaying weight
+    const weight = 2 / (i + 2);  // Decay weight for averaging
+    row_avg_strategy = row_avg_strategy.map((v, idx) =>
+      v * (1 - weight) + row_current[idx] * weight
+    );
+    col_avg_strategy = col_avg_strategy.map((v, idx) =>
+      v * (1 - weight) + col_current[idx] * weight
+    );
   }
   
   // Calculate utilities for both players
   const heroUtility = math.sum(heroMatrix.map((row, i) =>
-    math.sum(row.map((v, j) => v * row_strategy[i] * col_strategy[j]))
+    math.sum(row.map((v, j) => v * row_avg_strategy[i] * col_avg_strategy[j]))
   ));
   
   const villainUtility = math.sum(villainMatrix.map((row, i) =>
-    math.sum(row.map((v, j) => v * row_strategy[i] * col_strategy[j]))
+    math.sum(row.map((v, j) => v * row_avg_strategy[i] * col_avg_strategy[j]))
   ));
   
   return {
-    row_strategy,
-    col_strategy,
+    row_strategy: row_avg_strategy,
+    col_strategy: col_avg_strategy,
     heroUtility,
     villainUtility
   };

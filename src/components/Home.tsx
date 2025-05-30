@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
-import { Slider, Typography, Box, Drawer, Select, MenuItem, Divider, Toolbar, IconButton } from '@mui/material';
+  import { useState } from 'react';
+import { Slider, Typography, Box, Drawer, Select, MenuItem, Toolbar, IconButton, TextField, Button, Accordion, AccordionSummary, AccordionDetails } from '@mui/material';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { useNavigate } from 'react-router-dom';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import Plot from 'react-plotly.js';
@@ -17,14 +18,14 @@ export default function Home() {
     heroStack: 100,
     villainStack: 100,
     potSize: 20,
-    heroBet: 0.5,
+    heroBet: 1.0,
     heroRaise: 1.0,
     hero3bet: 1.0,
     villainBet: 1.0,
     villainRaise: 1.0,
-    pwinInitial: 0.5,
-    pwinAfterVillainBet: 0.5,
-    pwinAfterVillainRaise: 0.5
+    heroRanges: '0.3, 0.7',
+    villainRanges: '0.4, 0.6',
+    equities: '0.7, 0.3\n0.1, 0.9'
   });
 
   const [matrix, setMatrix] = useState<{
@@ -39,11 +40,70 @@ export default function Home() {
     villainUtility: number;
   } | null>(null);
 
-  useEffect(() => {
-    const newMatrix = calculateMatrix(gameState);
-    setMatrix(newMatrix);
-    setSolution(solveGame(newMatrix));
-  }, [gameState]);
+  const [expanded, setExpanded] = useState<string | false>(false);
+
+  const handleAccordionChange = (panel: string) => (_: React.SyntheticEvent, isExpanded: boolean) => {
+    setExpanded(isExpanded ? panel : false);
+  };
+
+  const [errors, setErrors] = useState<{
+    heroRanges: string;
+    villainRanges: string;
+    equities: string;
+  }>({
+    heroRanges: "",
+    villainRanges: "",
+    equities: ""
+  });
+
+  const validateRanges = (probStr: string): boolean => {
+    try {
+      const probs = probStr.split(',').map(s => Number(s.trim()));
+      return !probs.some(isNaN) && !probs.some(p => p < 0);
+    } catch {
+      return false;
+    }
+  };
+
+  const validateEquitiesMatrix = (equitiesStr: string, heroRanges: string, villainRanges: string): boolean => {
+    const heroCount = heroRanges.split(',').length;
+    const villainCount = villainRanges.split(',').length;
+    
+    const rows = equitiesStr.trim().split('\n');
+    if (rows.length !== heroCount) return false;
+
+    for (const row of rows) {
+      const values = row.split(',').map(s => Number(s.trim()));
+      if (values.length !== villainCount) return false;
+      if (values.some(isNaN)) return false;
+      if (values.some(v => v < 0 || v > 1)) return false;
+    }
+
+    return true;
+  };
+
+  const handleCalculate = () => {
+    const newErrors = {
+      heroRanges: validateRanges(gameState.heroRanges)
+        ? ""
+        : "Enter valid comma-separated numbers",
+      villainRanges: validateRanges(gameState.villainRanges)
+        ? ""
+        : "Enter valid comma-separated numbers",
+      equities: validateEquitiesMatrix(gameState.equities, gameState.heroRanges, gameState.villainRanges)
+        ? ""
+        : `Must be ${gameState.heroRanges.split(',').length}x${gameState.villainRanges.split(',').length} matrix with values between 0 and 1`
+    };
+
+    setErrors(newErrors);
+
+    // Only calculate if there are no errors
+    if (!Object.values(newErrors).some(error => error !== "")) {
+      const newMatrix = calculateMatrix(gameState);
+      setMatrix(newMatrix);
+      setSolution(solveGame(newMatrix));
+    }
+  };
 
   const calculateBetAmounts = () => {
     const initialPot = gameState.potSize;
@@ -81,13 +141,13 @@ export default function Home() {
 
   const createSlider = (
     label: string,
-    key: keyof Omit<GameState, 'useLogUtility'>,
+    key: keyof Omit<GameState, 'useLogUtility' | 'heroRanges' | 'villainRanges' | 'equities'>,
     min: number,
     max: number,
     step: number = 0.1,
     valueFormat: (value: number) => string = (value) => value.toFixed(2)
   ) => (
-    <Box sx={{ width: '100%', px: 2 }}>
+    <Box sx={{ width: '100%' }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0 }}>
         <Typography variant="body2">{label}</Typography>
         <Typography variant="body2" color="text.secondary">
@@ -108,6 +168,80 @@ export default function Home() {
     </Box>
   );
 
+  // Generate row and column labels
+  const generateStrategyLabels = () => {
+    const heroRanges = gameState.heroRanges.split(',').length;
+    const villainRanges = gameState.villainRanges.split(',').length;
+    
+    // Generate hero labels (e.g., "H1:cf,H2:bc")
+    const heroLabels: string[] = [];
+    for (let i = 0; i < Math.pow(6, heroRanges); i++) {
+      let strategy = [];
+      let temp = i;
+      for (let r = 0; r < heroRanges; r++) {
+        const action = index[temp % 6];
+        // Abbreviate actions
+        const shortAction = action
+          .split('-')
+          .map(part => part[0] + (part[1] || ''))
+          .join('-');
+        strategy.push(`H${r+1}:${shortAction}`);
+        temp = Math.floor(temp / 6);
+      }
+      heroLabels.push(strategy.join(','));
+    }
+
+    // Generate villain labels with abbreviated actions
+    const villainLabels: string[] = [];
+    for (let i = 0; i < Math.pow(12, villainRanges); i++) {
+      let strategy = [];
+      let temp = i;
+      for (let r = 0; r < villainRanges; r++) {
+        const fullAction = columns[temp % 12];
+        // Split into base action and response
+        const [baseAction, response] = fullAction.split('/');
+        
+        // Abbreviate base action
+        const shortBaseAction = baseAction
+          .replace('check-fold', 'ch-fo')
+          .replace('check-call', 'ch-ca')
+          .replace('check-raise', 'ch-3b')
+          .replace('bet-fold', 'be-fo')
+          .replace('bet-call', 'be-ca')
+          .replace('bet-3bet', 'be-3b')
+          .replace('raise-fold', 'ra-fo')
+          .replace('raise-call', 'ra-ca')
+          .replace('check', 'ch')
+          .replace('fold', 'fo')
+          .replace('call', 'ca');
+
+        // Abbreviate response
+        const shortResponse = (response || '')
+          .replace('check-fold', 'ch-fo')
+          .replace('check-call', 'ch-ca')
+          .replace('check-raise', 'ch-3b')
+          .replace('bet-fold', 'be-fo')
+          .replace('bet-call', 'be-ca')
+          .replace('bet-3bet', 'be-3b')
+          .replace('raise-fold', 'ra-fo')
+          .replace('raise-call', 'ra-ca')
+          .replace('check', 'ch')
+          .replace('fold', 'fo')
+          .replace('call', 'ca');
+
+        // Combine with slash
+        const shortAction = shortBaseAction + (response ? '/' + shortResponse : '');
+        strategy.push(`V${r+1}:${shortAction}`);
+        temp = Math.floor(temp / 12);
+      }
+      villainLabels.push(strategy.join(','));
+    }
+
+    return { heroLabels, villainLabels };
+  };
+
+  const { heroLabels, villainLabels } = generateStrategyLabels();
+
   const formatMatrixForDisplay = (heroMatrix: number[][], villainMatrix: number[][]) => {
     return heroMatrix.slice().reverse().map((row, i) =>
       row.map((heroVal, j) => ({
@@ -119,36 +253,14 @@ export default function Home() {
 
   const reversedMatrix = formatMatrixForDisplay(matrix.heroMatrix, matrix.villainMatrix);
 
-  const createAnnotations = () => {
-    return reversedMatrix.map((row, i) =>
-      row.map((vals, j) => {
-        const rowIdx = index.length - 1 - i; // Reverse index since matrix is reversed
-        const isHighProb = solution && solution.row_strategy && solution.col_strategy &&
-          solution.row_strategy[rowIdx] > ANNOTATION_THRESHOLD && solution.col_strategy[j] > ANNOTATION_THRESHOLD;
-        const suffix = isHighProb ? '*' : '';
-        return {
-          x: j,
-          y: i,
-          xref: 'x' as const,
-          yref: 'y' as const,
-          text: `(${vals.hero.toFixed(1)}, ${vals.villain.toFixed(1)})${suffix}`,
-          showarrow: false,
-          font: {
-            color: 'white',
-            size: 8
-          }
-        };
-      })
-    ).flat();
-  };
-
+  // Common layout settings for all plots
   const commonPlotLayout = {
     font: {
       size: 10
     },
-    margin: { t: 30, r: 30, b: 80, l: 120 }
+    margin: { t: 30, r: 60, b: 200, l: 120 } // increased margins for all plots
   };
-
+  
   return (
     <Box sx={{ display: 'flex' }}>
       <Drawer
@@ -159,6 +271,7 @@ export default function Home() {
           '& .MuiDrawer-paper': {
             width: DRAWER_WIDTH,
             boxSizing: 'border-box',
+            paddingBottom: '80px', // Account for fixed AppBar height
           },
         }}
       >
@@ -184,69 +297,142 @@ export default function Home() {
             </Select>
           </Box>
 
-          <Divider sx={{ mt: 0, mb: 1 }} />
+          <Accordion expanded={expanded === 'stack-and-pot'} onChange={handleAccordionChange('stack-and-pot')}>
+            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <Typography variant="body1" sx={{fontWeight: 500}}>Stack and Pot</Typography>
+                <IconButton
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate('/help#2-stack-and-pot-settings');
+                  }}
+                  size="small"
+                  sx={{ ml: 1 }}
+                >
+                  <HelpOutlineIcon fontSize="small" />
+                </IconButton>
+              </Box>
+            </AccordionSummary>
+            <AccordionDetails>
+              {createSlider('Hero Stack Size', 'heroStack', 50, 200, 5,
+                value => `${value} BB`)}
+              {createSlider('Villain Stack Size', 'villainStack', 50, 200, 5,
+                value => `${value} BB`)}
+              {createSlider('Initial Pot', 'potSize', 5, 200, 5,
+                value => `${value} BB`)}
+            </AccordionDetails>
+          </Accordion>
 
-          <Box sx={{ px: 2, mb: 1, display: 'flex', alignItems: 'center' }}>
-            <Typography variant="body1" sx={{fontWeight: 500}}>Stack and Pot</Typography>
-            <IconButton
-              onClick={() => navigate('/help#2-stack-and-pot-settings')}
-              size="small"
-            >
-              <HelpOutlineIcon fontSize="small" />
-            </IconButton>
-          </Box>
-          {createSlider('Hero Stack Size', 'heroStack', 50, 200, 5,
-            value => `${value} BB`)}
-          {createSlider('Villain Stack Size', 'villainStack', 50, 200, 5,
-            value => `${value} BB`)}
-          {createSlider('Initial Pot', 'potSize', 5, 200, 5,
-            value => `${value} BB`)}
+          <Accordion expanded={expanded === 'range-settings'} onChange={handleAccordionChange('range-settings')}>
+            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <Typography variant="body1" sx={{fontWeight: 500}}>Range Settings</Typography>
+                <IconButton
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate('/help#3-range-settings');
+                  }}
+                  size="small"
+                  sx={{ ml: 1 }}
+                >
+                  <HelpOutlineIcon fontSize="small" />
+                </IconButton>
+              </Box>
+            </AccordionSummary>
+            <AccordionDetails>
+              <TextField
+                label="Hero Range Probabilities"
+                value={gameState.heroRanges}
+                onChange={(e) => {
+                  setGameState(prev => ({ ...prev, heroRanges: e.target.value }));
+                  setErrors(prev => ({ ...prev, heroRanges: "" }));
+                }}
+                fullWidth
+                margin="dense"
+                size="small"
+                error={!!errors.heroRanges}
+              />
+              <TextField
+                label="Villain Range Probabilities"
+                value={gameState.villainRanges}
+                onChange={(e) => {
+                  setGameState(prev => ({ ...prev, villainRanges: e.target.value }));
+                  setErrors(prev => ({ ...prev, villainRanges: "" }));
+                }}
+                fullWidth
+                margin="dense"
+                size="small"
+                error={!!errors.villainRanges}
+              />
+              <TextField
+                label="Hero Equities' Matrix"
+                value={gameState.equities}
+                onChange={(e) => setGameState(prev => ({ ...prev, equities: e.target.value }))}
+                fullWidth
+                margin="dense"
+                size="small"
+                multiline
+                rows={3}
+                error={!!errors.equities}
+              />
+            </AccordionDetails>
+          </Accordion>
 
-          <Divider sx={{ mt: 0, mb: 1 }} />
+          <Accordion expanded={expanded === 'bet-sizing'} onChange={handleAccordionChange('bet-sizing')}>
+            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <Typography variant="body1" sx={{fontWeight: 500}}>Bet sizing</Typography>
+                <IconButton
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate('/help#4-bet-sizing');
+                  }}
+                  size="small"
+                  sx={{ ml: 1 }}
+                >
+                  <HelpOutlineIcon fontSize="small" />
+                </IconButton>
+              </Box>
+            </AccordionSummary>
+            <AccordionDetails>
+              {createSlider('Hero Bet (pot %)', 'heroBet', 0.1, 2, 0.1,
+                value => `${(value * 100).toFixed(0)}% (${amounts.heroBet} BB)`)}
+              {createSlider('Hero Raise (pot %)', 'heroRaise', 0.1, 2, 0.1,
+                value => `${(value * 100).toFixed(0)}% (${amounts.heroRaise} BB)`)}
+              {createSlider('Hero 3-Bet (pot %)', 'hero3bet', 0.1, 2, 0.1,
+                value => `${(value * 100).toFixed(0)}% (${amounts.hero3bet} BB)`)}
+              {createSlider('Villain Bet (pot %)', 'villainBet', 0.1, 2, 0.1,
+                value => `${(value * 100).toFixed(0)}% (${amounts.villainBet} BB)`)}
+              {createSlider('Villain Raise (pot %)', 'villainRaise', 0.1, 2, 0.1,
+                value => `${(value * 100).toFixed(0)}% (${amounts.villainRaise} BB)`)}
+            </AccordionDetails>
+          </Accordion>
+        </Box>
 
-          <Box sx={{ px: 2, mb: 1, display: 'flex', alignItems: 'center' }}>
-            <Typography variant="body1" sx={{fontWeight: 500}}>Hero Equity</Typography>
-            <IconButton
-              onClick={() => navigate('/help#3-hero-equity')}
-              size="small"
-            >
-              <HelpOutlineIcon fontSize="small" />
-            </IconButton>
-          </Box>
-          {createSlider('Initial Equity', 'pwinInitial', 0, 1, 0.01,
-            value => `${(value * 100).toFixed(0)}%`)}
-          {createSlider('Equity After Villain Bet', 'pwinAfterVillainBet', 0, 1, 0.01,
-            value => `${(value * 100).toFixed(0)}%`)}
-          {createSlider('Equity After Villain Raise', 'pwinAfterVillainRaise', 0, 1, 0.01,
-            value => `${(value * 100).toFixed(0)}%`)}
-            
-          <Divider sx={{ mt: 0, mb: 1 }} />
-
-          <Box sx={{ px: 2, mb: 1, display: 'flex', alignItems: 'center' }}>
-            <Typography variant="body1" sx={{fontWeight: 500}}>Bet sizing</Typography>
-            <IconButton
-              onClick={() => navigate('/help#4-bet-sizing')}
-              size="small"
-            >
-              <HelpOutlineIcon fontSize="small" />
-            </IconButton>
-          </Box>
-          {createSlider('Hero Bet (pot %)', 'heroBet', 0.1, 2, 0.1,
-            value => `${(value * 100).toFixed(0)}% (${amounts.heroBet} BB)`)}
-          {createSlider('Hero Raise (pot %)', 'heroRaise', 0.1, 2, 0.1,
-            value => `${(value * 100).toFixed(0)}% (${amounts.heroRaise} BB)`)}
-          {createSlider('Hero 3-Bet (pot %)', 'hero3bet', 0.1, 2, 0.1,
-            value => `${(value * 100).toFixed(0)}% (${amounts.hero3bet} BB)`)}
-          {createSlider('Villain Bet (pot %)', 'villainBet', 0.1, 2, 0.1,
-            value => `${(value * 100).toFixed(0)}% (${amounts.villainBet} BB)`)}
-          {createSlider('Villain Raise (pot %)', 'villainRaise', 0.1, 2, 0.1,
-            value => `${(value * 100).toFixed(0)}% (${amounts.villainRaise} BB)`)}
+        {/* Fixed Calculate Button */}
+        <Box sx={{
+          position: 'fixed',
+          bottom: 0,
+          width: `${DRAWER_WIDTH}px`,
+          padding: 2,
+          backgroundColor: 'background.paper',
+          borderTop: 1,
+          borderColor: 'divider'
+        }}>
+          <Button
+            variant="contained"
+            fullWidth
+            size="large"
+            onClick={handleCalculate}
+          >
+            Calculate
+          </Button>
         </Box>
       </Drawer>
 
       <Box component="main" sx={{ flexGrow: 1, p: 2 }}>
 
-        <Box sx={{ mb: 3 }}>
+        <Box>
           {solution && (
             <Typography variant="body1" sx={{ fontWeight: 500, fontSize: '1.1rem' }} gutterBottom>
               Game Matrix (Hero: {solution.heroUtility.toFixed(2)}, Villain: {solution.villainUtility.toFixed(2)})
@@ -260,39 +446,50 @@ export default function Home() {
           )}
 
           <Plot
-            data={[
-              {
+                data={[
+                  {
                 z: reversedMatrix.map(row => row.map(vals => vals.hero)), // Color based on hero values
-                x: columns,
-                y: [...index].reverse(),
-                type: 'heatmap',
+                x: villainLabels,
+                y: [...heroLabels].reverse(),
+                type: 'heatmap' as const,
                 colorscale: 'RdBu',
                 hoverongaps: false,
                 showscale: true,
+                customdata: reversedMatrix.map(row => row.map(vals => vals.villain)),
+                hovertemplate: `
+                  Values (Hero, Villain): (%{z:.1f}, %{customdata:.1f})<br>
+                  Strategy:<br>
+                  Hero: %{y}<br>
+                  Villain: %{x}
+                  <extra></extra>
+                `,
               }
             ]}
             layout={{
               ...commonPlotLayout,
-              font: { ...commonPlotLayout.font, size: 11 },
+              font: { ...commonPlotLayout.font, size: 10 },
               width: window.innerWidth - DRAWER_WIDTH - 80,
-              height: 360, // slightly increased height for more space
-              xaxis: { 
-                tickangle: 45,
+              height: 600, // increased height for more space
+              xaxis: {
+                tickangle: -90,
                 automargin: true,
-                tickfont: { size: 12 },
-                tickvals: columns,
-                ticktext: columns,
+                tickfont: { size: 7 }, // Smaller font
+                tickvals: Array.from({length: villainLabels.length}, (_, i) => i),
+                ticktext: villainLabels.map((label, i) =>
+                  (solution && solution!.col_strategy[i] > ANNOTATION_THRESHOLD ? '* ' : '') + label
+                ),
                 side: 'bottom'
               },
               yaxis: {
-                autorange: true,
-                tickfont: { size: 12 },
+                tickangle: 0,
+                automargin: true,
+                tickfont: { size: 7 },
+                tickvals: Array.from({length: heroLabels.length}, (_, i) => i),
+                ticktext: [...heroLabels].reverse().map((label, i) =>
+                  (solution && solution!.row_strategy[heroLabels.length - 1 - i] > ANNOTATION_THRESHOLD ? '* ' : '') + label
+                ),
               },
-              margin: { ...commonPlotLayout.margin, b: 100 }, // increase bottom margin for x-axis labels
-              annotations: createAnnotations().map(a => ({
-          ...a,
-          font: { ...a.font, size: 10 }
-              }))
+              margin: commonPlotLayout.margin,
             }}
           />
         </Box>
@@ -312,28 +509,45 @@ export default function Home() {
               <Plot
               data={[
                 {
-                x: index,
-                y: solution.row_strategy,
+                x: solution.row_strategy
+                  .filter(v => v > ANNOTATION_THRESHOLD)
+                  .sort((a, b) => a - b),
+                y: heroLabels
+                  .map((label, i) => ({ label, value: solution.row_strategy[i] }))
+                  .filter(item => item.value > ANNOTATION_THRESHOLD)
+                  .sort((a, b) => a.value - b.value)
+                  .map(item => item.label),
                 type: 'bar',
-                text: solution.row_strategy.map(v => v.toFixed(3)),
+                orientation: 'h',
+                text: solution.row_strategy
+                  .filter(v => v > ANNOTATION_THRESHOLD)
+                  .sort((a, b) => a - b)
+                  .map(v => v.toFixed(3)),
+                hoverlabel: { bgcolor: 'white' },
+                hovertemplate: '%{x:.3f}<extra></extra>',
+                showlegend: false,
                 textposition: 'auto',
                 textfont: { size: 9 },
-                marker: { color: '#070aac' }  // RdBu blue color
+                marker: { color: '#070aac' }
                 }
               ]}
               layout={{
                 ...commonPlotLayout,
                 width: (window.innerWidth - DRAWER_WIDTH - 100) / 2,
-                height: 260,
-                xaxis: { 
-                tickangle: 45,
-                automargin: true,
-                tickfont: { size: 12 },
-                tickvals: index,
-                ticktext: index,
-                side: 'bottom'
+                height: 400,
+                xaxis: {
+                  automargin: true,
+                  tickfont: { size: 9 },
+                  side: 'bottom',
+                  fixedrange: true
                 },
-                margin: { ...commonPlotLayout.margin, b: 100, r: 60 } // increase bottom and right margin
+                yaxis: {
+                  automargin: true,
+                  tickfont: { size: 9 },
+                  side: 'left',
+                  fixedrange: true
+                },
+                margin: { t: 30, r: 60, b: 50, l: 200 }
               }}
               />
             </Box>
@@ -351,28 +565,45 @@ export default function Home() {
               <Plot
               data={[
                 {
-                x: columns,
-                y: solution.col_strategy,
+                x: solution.col_strategy
+                  .filter(v => v > ANNOTATION_THRESHOLD)
+                  .sort((a, b) => a - b),
+                y: villainLabels
+                  .map((label, i) => ({ label, value: solution.col_strategy[i] }))
+                  .filter(item => item.value > ANNOTATION_THRESHOLD)
+                  .sort((a, b) => a.value - b.value)
+                  .map(item => item.label),
                 type: 'bar',
-                text: solution.col_strategy.map(v => v.toFixed(3)),
+                orientation: 'h',
+                text: solution.col_strategy
+                  .filter(v => v > ANNOTATION_THRESHOLD)
+                  .sort((a, b) => a - b)
+                  .map(v => v.toFixed(3)),
+                hoverlabel: { bgcolor: 'white' },
+                hovertemplate: '%{x:.3f}<extra></extra>',
+                showlegend: false,
                 textposition: 'auto',
                 textfont: { size: 9 },
-                marker: { color: '#070aac' }  // RdBu blue color
+                marker: { color: '#070aac' }
                 }
               ]}
               layout={{
                 ...commonPlotLayout,
                 width: (window.innerWidth - DRAWER_WIDTH - 100) / 2,
-                height: 260,
-                xaxis: { 
-                tickangle: 45,
-                automargin: true,
-                tickfont: { size: 12 },
-                tickvals: columns,
-                ticktext: columns,
-                side: 'bottom'
+                height: 400,
+                xaxis: {
+                  automargin: true,
+                  tickfont: { size: 9 },
+                  side: 'bottom',
+                  fixedrange: true
                 },
-                margin: { ...commonPlotLayout.margin, b: 100, r: 60 } // increase bottom and right margin
+                yaxis: {
+                  automargin: true,
+                  tickfont: { size: 9 },
+                  side: 'left',
+                  fixedrange: true
+                },
+                margin: { t: 30, r: 60, b: 50, l: 200 }
               }}
               />
             </Box>

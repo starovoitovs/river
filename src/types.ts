@@ -1,16 +1,16 @@
 export interface GameState {
   useLogUtility: 'linear' | 'logarithmic';
   heroStack: number;          // Hero stack size in BB
-  villainStack: number;   // Villain stack size in BB
-  potSize: number;        // Initial pot size in big blinds
-  heroBet: number;        // Bet sizes as fractions of current pot
+  villainStack: number;       // Villain stack size in BB
+  potSize: number;           // Initial pot size in big blinds
+  heroBet: number;           // Bet sizes as fractions of current pot
   heroRaise: number;
   hero3bet: number;
   villainBet: number;
   villainRaise: number;
-  pwinInitial: number;
-  pwinAfterVillainBet: number;
-  pwinAfterVillainRaise: number;
+  heroRanges: string;        // Comma-separated probabilities for hero's ranges
+  villainRanges: string;     // Comma-separated probabilities for villain's ranges
+  equities: string;          // Comma-separated equities for each range combination
 }
 
 export const index = [

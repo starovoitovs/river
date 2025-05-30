@@ -47,16 +47,11 @@ See [detailed discussion below](#advanced-considerations).
 
 If not using log-payoff, the stack size relative to the current pot size does not matter, only the current pot size.
 
-### 3. Hero Equity
+### 3. Range Settings
 
-Input your range equity estimates based on:
-- Initial situation
-- After Hero's check and subsequent Villain's bet
-- After Hero's bet and subsequent Villain's raise
+Discretize Hero's and Villain's ranges by assigning respective probabilities (they should sum up to 1). Hero's ranges are called H1, H2 ..., Villain's ranges are called V1, V2 ...
 
-You can compute these equities in any range equity calculator, such as Equilab.
-
-These estimates are considered universal knowledge, so that both Hero and Villain have the same opinion about these probabilities.
+After that, specify the matrix, such that m-th row and n-th column contain your estimate of Hero's equity of Hero's Hm range vs. Villain's Vn range.
 
 ### 4. Bet Sizing
 Specify anticipated bet sizes as pot percentages. The amounts in brackets are the total bet amounts after the respective action.
