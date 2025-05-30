@@ -28,7 +28,7 @@ export default function Home() {
     villainRanges: '55, 45',
     equities: '53, 100\n0, 53',
     iterations: 1000,
-    learningRate: 0.1
+    learningRate: 0.05
   });
 
   const [matrix, setMatrix] = useState<{
