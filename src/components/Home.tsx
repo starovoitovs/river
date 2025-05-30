@@ -26,7 +26,9 @@ export default function Home() {
     villainRaise: 1.0,
     heroRanges: '45, 55',
     villainRanges: '55, 45',
-    equities: '53, 100\n0, 53'
+    equities: '53, 100\n0, 53',
+    iterations: 1000,
+    learningRate: 0.1
   });
 
   const [matrix, setMatrix] = useState<{
@@ -115,7 +117,11 @@ export default function Home() {
     if (heroValid && villainValid && !newErrors.equities) {
       const newMatrix = calculateMatrix(gameState);
       setMatrix(newMatrix);
-      setSolution(solveGame(newMatrix));
+      setSolution(solveGame({
+        ...newMatrix,
+        iterations: gameState.iterations,
+        learningRate: gameState.learningRate
+      }));
     }
   };
 
@@ -402,7 +408,7 @@ export default function Home() {
           <Accordion expanded={expanded === 'bet-sizing'} onChange={handleAccordionChange('bet-sizing')} elevation={0}>
             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
               <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                <Typography variant="body1" sx={{fontWeight: 500}}>Actions and bets</Typography>
+                <Typography variant="body1" sx={{fontWeight: 500}}>Actions and Bets</Typography>
                 <IconButton
                   onClick={(e) => {
                     e.stopPropagation();
@@ -421,16 +427,16 @@ export default function Home() {
                 
               {/* Always show hero bet */}
               <Typography variant="body1" sx={{ mb: 1, mt: 2, fontWeight: 500 }}>First action</Typography>
-              {createSlider('Hero Bet (pot %)', 'heroBet', 0.1, 2, 0.1,
+              {createSlider('Hero Bet (pot %)', 'heroBet', 0.1, 5, 0.1,
                 value => `${(value * 100).toFixed(0)}% (${amounts.heroBet} BB)`)}
 
               {/* Show hero raise and villain bet/raise for maxActions >= 3 */}
               {gameState.maxActions >= 3 && (
                 <>
                   <Typography variant="body1" sx={{ mb: 1, mt: 2, fontWeight: 500 }}>Second action</Typography>
-                  {createSlider('Villain Bet (pot %)', 'villainBet', 0.1, 2, 0.1,
+                  {createSlider('Villain Bet (pot %)', 'villainBet', 0.1, 5, 0.1,
                     value => `${(value * 100).toFixed(0)}% (${amounts.villainBet} BB)`)}
-                  {createSlider('Villain Raise (pot %)', 'villainRaise', 0.1, 2, 0.1,
+                  {createSlider('Villain Raise (pot %)', 'villainRaise', 0.1, 5, 0.1,
                     value => `${(value * 100).toFixed(0)}% (${amounts.villainRaise} BB)`)}
                 </>
               )}
@@ -439,12 +445,36 @@ export default function Home() {
               {gameState.maxActions === 4 && (
                 <>
                   <Typography variant="body1" sx={{ mb: 1, mt: 2, fontWeight: 500 }}>Third action</Typography>
-                  {createSlider('Hero Raise (pot %)', 'heroRaise', 0.1, 2, 0.1,
+                  {createSlider('Hero Raise (pot %)', 'heroRaise', 0.1, 5, 0.1,
                     value => `${(value * 100).toFixed(0)}% (${amounts.heroRaise} BB)`)}
-                  {createSlider('Hero 3-Bet (pot %)', 'hero3bet', 0.1, 2, 0.1,
+                  {createSlider('Hero 3-Bet (pot %)', 'hero3bet', 0.1, 5, 0.1,
                     value => `${(value * 100).toFixed(0)}% (${amounts.hero3bet} BB)`)}
                 </>
               )}
+            </AccordionDetails>
+          </Accordion>
+
+          <Accordion expanded={expanded === 'solver-settings'} onChange={handleAccordionChange('solver-settings')} elevation={0}>
+            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <Typography variant="body1" sx={{fontWeight: 500}}>Solver Settings</Typography>
+                <IconButton
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate('/help#solver-settings');
+                  }}
+                  size="small"
+                  sx={{ ml: 1 }}
+                >
+                  <HelpOutlineIcon fontSize="small" />
+                </IconButton>
+              </Box>
+            </AccordionSummary>
+            <AccordionDetails>
+              {createSlider('Number of Iterations', 'iterations', 100, 10000, 100,
+                value => `${value.toFixed(0)}`)}
+              {createSlider('Learning Rate', 'learningRate', 0.01, 1, 0.01,
+                value => value.toFixed(2))}
             </AccordionDetails>
           </Accordion>
         </Box>

@@ -101,6 +101,10 @@ Initial Pot: 20BB
    20BB (initial) + 60BB (call, pot becomes 180BB) + 180BB (raise 100% pot) = 260BB total bet amount
 ```
 
+### Solver settings
+
+Algorithm uses fictitious play to learn the optimal strategy, for which one can specify number of iterations and learning rate.
+
 ## Advanced Considerations
 
 ### Tournament Play Limitations

@@ -12,6 +12,8 @@ export interface GameState {
   heroRanges: string;        // Comma-separated probabilities for hero's ranges
   villainRanges: string;     // Comma-separated probabilities for villain's ranges
   equities: string;          // Comma-separated equities for each range combination
+  iterations: number;        // Number of solver iterations
+  learningRate: number;      // Learning rate for solver
 }
 
 export const getHeroActions = (maxActions: number): string[] => {

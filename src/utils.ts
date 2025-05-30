@@ -249,7 +249,12 @@ export function calculateMatrix(state: GameState) {
   };
 }
 
-export function solveGame(matrices: { heroMatrix: number[][], villainMatrix: number[][] }) {
+export function solveGame(matrices: {
+  heroMatrix: number[][],
+  villainMatrix: number[][],
+  iterations?: number,
+  learningRate?: number
+}) {
   const { heroMatrix, villainMatrix } = matrices;
   // Simple implementation of fictitious play for approximating Nash equilibrium
   const rows = heroMatrix.length;
@@ -261,8 +266,8 @@ export function solveGame(matrices: { heroMatrix: number[][], villainMatrix: num
   let row_current = Array(rows).fill(1/rows);
   let col_current = Array(cols).fill(1/cols);
   
-  const iterations = 1000;  // Increase iterations
-  const learning_rate = 0.5;  // More aggressive learning rate
+  const iterations = matrices.iterations || 10000;  // Use provided iterations or default to 10000
+  const learning_rate = matrices.learningRate || 0.5;  // Use provided learning rate or default to 0.5
   
   for (let i = 0; i < iterations; i++) {
     // Calculate expected payoffs
