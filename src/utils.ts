@@ -253,8 +253,22 @@ export function solveGame(matrices: {
   heroMatrix: number[][],
   villainMatrix: number[][],
   iterations?: number,
-  learningRate?: number
-}) {
+  learningRate?: number,
+  convergenceThreshold?: number
+}): {
+  row_strategy: number[],
+  col_strategy: number[],
+  heroUtility: number,
+  villainUtility: number,
+  convergenceHistory: {
+    heroUtility: number,
+    villainUtility: number,
+    heroExploitability: number,
+    villainExploitability: number,
+    iteration: number
+  }[],
+  convergedAtIteration: number | null
+} {
   const { heroMatrix, villainMatrix } = matrices;
   // Simple implementation of fictitious play for approximating Nash equilibrium
   const rows = heroMatrix.length;
@@ -268,6 +282,18 @@ export function solveGame(matrices: {
   
   const iterations = matrices.iterations || 10000;  // Use provided iterations or default to 10000
   const learning_rate = matrices.learningRate || 0.5;  // Use provided learning rate or default to 0.5
+
+  // Track convergence metrics during training
+  const convergenceHistory: {
+    heroUtility: number,
+    villainUtility: number,
+    heroExploitability: number,
+    villainExploitability: number,
+    iteration: number
+  }[] = [];
+
+  const convergenceThreshold = matrices.convergenceThreshold || 0.01; // Default 0.01
+  let convergedAtIteration: number | null = null;
   
   for (let i = 0; i < iterations; i++) {
     // Calculate expected payoffs
@@ -300,6 +326,35 @@ export function solveGame(matrices: {
     col_avg_strategy = col_avg_strategy.map((v, idx) =>
       v * (1 - weight) + col_current[idx] * weight
     );
+
+    // Calculate current utilities
+    const currentHeroUtility = math.sum(heroMatrix.map((row, i) =>
+      math.sum(row.map((v, j) => v * row_avg_strategy[i] * col_avg_strategy[j]))
+    ));
+    const currentVillainUtility = math.sum(villainMatrix.map((row, i) =>
+      math.sum(row.map((v, j) => v * row_avg_strategy[i] * col_avg_strategy[j]))
+    ));
+
+    // Calculate exploitability (how much each player can gain by deviating)
+    const bestHeroResponse = Math.max(...row_payoffs);
+    const bestVillainResponse = Math.max(...col_payoffs);
+    
+    const heroExploitability = bestHeroResponse - currentHeroUtility;
+    const villainExploitability = bestVillainResponse - currentVillainUtility;
+
+    convergenceHistory.push({
+      heroUtility: currentHeroUtility,
+      villainUtility: currentVillainUtility,
+      heroExploitability,
+      villainExploitability,
+      iteration: i
+    });
+
+    // Check if converged
+    if (heroExploitability < convergenceThreshold && villainExploitability < convergenceThreshold) {
+      convergedAtIteration = i;
+      break;
+    }
   }
   
   // Calculate utilities for both players
@@ -315,6 +370,9 @@ export function solveGame(matrices: {
     row_strategy: row_avg_strategy,
     col_strategy: col_avg_strategy,
     heroUtility,
-    villainUtility
+    villainUtility,
+    convergenceHistory,
+    convergedAtIteration
   };
 }
+

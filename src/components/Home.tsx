@@ -9,7 +9,8 @@ import { getHeroActions, getVillainActions } from '../types';
 import type { GameState } from '../types';
 
 const DRAWER_WIDTH = 280;
-const ANNOTATION_THRESHOLD = 0.01; // Threshold for probabilities in mixed strategies so that we display asterisk
+const ANNOTATION_THRESHOLD = 0.001; // Threshold for probabilities in mixed strategies so that we display asterisk
+const EXPLOITABILITY_THRESHOLD = 0.01;
 
 export default function Home() {
   const navigate = useNavigate();
@@ -27,8 +28,8 @@ export default function Home() {
     heroRanges: '45, 55',
     villainRanges: '55, 45',
     equities: '53, 100\n0, 53',
-    iterations: 1000,
-    learningRate: 0.3
+    iterations: 2500,
+    learningRate: 0.01
   });
 
   const [matrix, setMatrix] = useState<{
@@ -41,6 +42,14 @@ export default function Home() {
     col_strategy: number[];
     heroUtility: number;
     villainUtility: number;
+    convergenceHistory: {
+      heroUtility: number;
+      villainUtility: number;
+      heroExploitability: number;
+      villainExploitability: number;
+      iteration: number;
+    }[];
+    convergedAtIteration: number | null;
   } | null>(null);
 
   const [expanded, setExpanded] = useState<string | false>(false);
@@ -120,7 +129,8 @@ export default function Home() {
       setSolution(solveGame({
         ...newMatrix,
         iterations: gameState.iterations,
-        learningRate: gameState.learningRate
+        learningRate: gameState.learningRate,
+        convergenceThreshold: EXPLOITABILITY_THRESHOLD
       }));
     }
   };
@@ -473,7 +483,7 @@ export default function Home() {
             <AccordionDetails>
               {createSlider('Number of Iterations', 'iterations', 100, 10000, 100,
                 value => `${value.toFixed(0)}`)}
-              {createSlider('Learning Rate', 'learningRate', 0.01, 1, 0.01,
+              {createSlider('Learning Rate', 'learningRate', 0.01, 0.1, 0.01,
                 value => value.toFixed(2))}
             </AccordionDetails>
           </Accordion>
@@ -506,7 +516,7 @@ export default function Home() {
         {solution && (
           <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 3 }}>
             <Box>
-              <Typography variant="body1" sx={{fontWeight: 500}} gutterBottom>Hero Strategy
+              <Typography variant="h6" sx={{fontWeight: 500}} gutterBottom>Hero Strategy
               <IconButton
                 onClick={() => navigate('/help#game-matrix-and-strategies')}
                 size="small"
@@ -560,9 +570,10 @@ export default function Home() {
               }}
               />
             </Box>
-
+    
+    
             <Box>
-              <Typography variant="body1" sx={{fontWeight: 500}} gutterBottom>
+              <Typography variant="h6" sx={{fontWeight: 500}} gutterBottom>
               Villain Strategy
               <IconButton
                 onClick={() => navigate('/help#game-matrix-and-strategies')}
@@ -621,7 +632,7 @@ export default function Home() {
 
         <Box>
           {solution && (
-            <Typography variant="body1" sx={{ fontWeight: 500 }} gutterBottom>
+            <Typography variant="h6" sx={{ fontWeight: 500 }} gutterBottom>
               Game Matrix (Hero: {solution.heroUtility.toFixed(2)}, Villain: {solution.villainUtility.toFixed(2)})
               <IconButton
           onClick={() => navigate('/help#game-matrix-and-strategies')}
@@ -681,7 +692,123 @@ export default function Home() {
           />
         </Box>
 
+        {/* Convergence Analysis Section */}
+        {solution && (
+          <Box sx={{ mt: 4 }}>
+            <Typography variant="h6" gutterBottom>Convergence Analysis</Typography>
+            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 3, mb: 3 }}>
+              <Box>
+                <Typography variant="body1" sx={{ fontWeight: 500 }} gutterBottom>
+                  Player Values Over Time
+                </Typography>
+                <Plot
+                  data={[
+                    {
+                      y: solution.convergenceHistory.map(h => h.heroUtility),
+                      type: 'scatter',
+                      mode: 'lines',
+                      name: 'Hero Value',
+                      line: { color: '#1976d2' }
+                    },
+                    {
+                      y: solution.convergenceHistory.map(h => h.villainUtility),
+                      type: 'scatter',
+                      mode: 'lines',
+                      name: 'Villain Value',
+                      line: { color: '#dc004e' }
+                    }
+                  ]}
+                  layout={{
+                    ...commonPlotLayout,
+                    xaxis: { title: { text: 'Iteration' } },
+                    yaxis: { title: { text: 'Player Value' } },
+                    height: 400,
+                    margin: { t: 30, r: 60, b: 50, l: 60 },
+                    showlegend: true
+                  }}
+                  config={{ responsive: true }}
+                />
+              </Box>
 
+              <Box>
+                <Typography variant="body1" sx={{ fontWeight: 500 }} gutterBottom>
+                  Exploitability
+                </Typography>
+                <Plot
+                  data={[
+                    {
+                      y: solution.convergenceHistory.map(h => h.heroExploitability),
+                      type: 'scatter',
+                      mode: 'lines',
+                      name: 'Hero Exploitability',
+                      line: { color: '#1976d2' }
+                    },
+                    {
+                      y: solution.convergenceHistory.map(h => h.villainExploitability),
+                      type: 'scatter',
+                      mode: 'lines',
+                      name: 'Villain Exploitability',
+                      line: { color: '#dc004e' }
+                    }
+                  ]}
+                  layout={{
+                    ...commonPlotLayout,
+                    xaxis: { title: { text: 'Iteration' } },
+                    yaxis: { title: { text: 'Exploitability' } },
+                    height: 400,
+                    margin: { t: 30, r: 60, b: 50, l: 60 },
+                    showlegend: true
+                  }}
+                  config={{ responsive: true }}
+                />
+              </Box>
+
+              <Box sx={{ gridColumn: '1 / -1' }}>
+                <Typography variant="body1" sx={{ fontWeight: 500 }} gutterBottom>
+                  Convergence Quality Indicators
+                </Typography>
+                <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 2 }}>
+                  <Box sx={{ p: 2, border: 1, borderColor: 'divider', borderRadius: 1 }}>
+                    <Typography variant="subtitle2" color="text.secondary">
+                      Final Exploitability
+                    </Typography>
+                    <Typography variant="h6">
+                      {(Math.max(
+                        solution.convergenceHistory[solution.convergenceHistory.length - 1].heroExploitability,
+                        solution.convergenceHistory[solution.convergenceHistory.length - 1].villainExploitability
+                      )).toFixed(3)}
+                    </Typography>
+                  </Box>
+                  <Box sx={{ p: 2, border: 1, borderColor: 'divider', borderRadius: 1 }}>
+                    <Typography variant="subtitle2" color="text.secondary">
+                      Value Range (last 100 iterations)
+                    </Typography>
+                    <Typography variant="h6">
+                      {(Math.max(
+                        ...solution.convergenceHistory.slice(-100).map(h => Math.abs(h.heroUtility - h.villainUtility))
+                      )).toFixed(3)}
+                    </Typography>
+                  </Box>
+                  <Box sx={{ p: 2, border: 1, borderColor: 'divider', borderRadius: 1 }}>
+                    <Typography variant="subtitle2" color="text.secondary">
+                      Convergence Status (both exploitabilities &lt; {EXPLOITABILITY_THRESHOLD.toFixed(3)})
+                    </Typography>  <Typography variant="h6" sx={{
+                      color: solution.convergenceHistory[solution.convergenceHistory.length - 1].heroExploitability < EXPLOITABILITY_THRESHOLD &&
+                             solution.convergenceHistory[solution.convergenceHistory.length - 1].villainExploitability < EXPLOITABILITY_THRESHOLD
+                        ? 'success.main'
+                        : 'warning.main'
+                    }}>
+                      {solution.convergenceHistory[solution.convergenceHistory.length - 1].heroExploitability < EXPLOITABILITY_THRESHOLD &&
+                       solution.convergenceHistory[solution.convergenceHistory.length - 1].villainExploitability < EXPLOITABILITY_THRESHOLD
+                        ? `Converged (${solution.convergedAtIteration !== null ? solution.convergedAtIteration + 1 : gameState.iterations} iterations)`
+                        : 'Not Converged'}
+                    </Typography>
+                  </Box>
+                </Box>
+              </Box>
+            </Box>
+          </Box>
+        )}
       </Box>
     </Box>
   );
