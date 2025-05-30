@@ -9,7 +9,7 @@ import { getHeroActions, getVillainActions } from '../types';
 import type { GameState } from '../types';
 
 const DRAWER_WIDTH = 280;
-const ANNOTATION_THRESHOLD = 0.001; // Threshold for probabilities in mixed strategies so that we display asterisk
+const ANNOTATION_THRESHOLD = 0.01; // Threshold for probabilities in mixed strategies so that we display asterisk
 const EXPLOITABILITY_THRESHOLD = 0.01;
 
 export default function Home() {

@@ -23,6 +23,8 @@ Each player aims to maximize their own value. The Nash Equilibrium (NE) represen
 
 We approximate the Nash Equilibrium using fictitious play, as in the non-constant-sum games players' individual log-payoff maximization no longer creates a perfectly antagonistic relationship where one's gain is exactly the other's loss.
 
+The bar plots display Hero's and Villain's mixed strategies (truncated at 0.01).
+
 ## Configuration Options
 
 ### Stack and Pot Settings
