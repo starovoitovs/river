@@ -40,7 +40,7 @@ export const ConvergenceIndicatorsDisplay: React.FC<ConvergenceIndicatorsDisplay
         </Box>
         <Box sx={{ p: 2, border: 1, borderColor: 'divider', borderRadius: 1 }}>
           <Typography variant="subtitle2" color="text.secondary">
-            Final Exploitability
+            Exploitability
           </Typography>
           <Typography variant="h6" component="div">
             Hero: {lastHistoryPoint.heroExploitability.toFixed(3)},

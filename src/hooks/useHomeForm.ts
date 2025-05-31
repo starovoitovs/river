@@ -20,12 +20,12 @@ const initialGameState: GameState = {
   hero3bet: 1.0,
   villainBet: 1.0,
   villainRaise: 1.0,
-  heroRanges: '45, 55',
-  villainRanges: '55, 45',
-  equities: '53, 100\n0, 53',
+  heroRanges: '2, 3',
+  villainRanges: '3, 2',
+  equities: '60, 100\n0, 60',
   iterations: 10000,
   learningRate: 0.01,
-  convergenceThreshold: 0.01,
+  convergenceThreshold: 0.001,
   heroFixedStrategyInput: '',
   villainFixedStrategyInput: ''
 };
