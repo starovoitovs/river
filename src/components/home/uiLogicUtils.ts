@@ -160,11 +160,11 @@ const transposedMatrix: number[][] = Array(numCols).fill(0).map(() => Array(numR
 
 for (let i = 0; i < numRows; i++) {
   for (let j = 0; j < numCols; j++) {
-    // Transpose and apply 100 - x transformation
+    // Transpose and apply 100 - x transformation for percentage equities
     transposedMatrix[j][i] = 100 - matrix[i][j];
   }
 }
 
 // Convert the transposed matrix back to a comma-separated string
-return transposedMatrix.map(row => row.join(',')).join('\n');
+return transposedMatrix.map(row => row.join(', ')).join('\n');
 };

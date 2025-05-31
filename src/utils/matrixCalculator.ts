@@ -30,7 +30,7 @@ export function calculateMatrix(state: GameState) {
   const heroRangeProbs = heroRangeValues.map(v => v / heroSum);
   const villainRangeProbs = villainRangeValues.map(v => v / villainSum);
 
-  // Convert percentage values to probabilities
+  // Convert percentage values to probabilities (input is in units of 100s)
   const equityMatrix = equities.split('\n')
     .map(row => row.split(',')
     .map(s => Number(s.trim()) / 100));

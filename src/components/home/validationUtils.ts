@@ -33,9 +33,10 @@ export const validateEquitiesMatrix = (equitiesStr: string, heroRanges: string, 
     if (values.some(isNaN)) {
       return [false, "All values must be numbers"];
     }
-    if (values.some(v => v < 0 || v > 100)) {
-      return [false, "Values must be between 0 and 100 (e.g., 70 means hero wins 70% of the time)"];
-    }
+    // Removed restriction: Values must be between 0 and 100
+    // Now allowing any numeric value, assuming input is already in decimal form (0-1)
+    // or can be any real number for more complex equity definitions.
+    // If negative values are not desired, a new validation rule could be added.
   }
 
   return [true, ""];
