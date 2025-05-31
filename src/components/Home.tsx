@@ -23,13 +23,14 @@ import { ConvergenceIndicatorsDisplay } from './home/results/ConvergenceIndicato
 import { StrategyPlotDisplay } from './home/results/StrategyPlotDisplay';
 import { GameMatrixPlotDisplay } from './home/results/GameMatrixPlotDisplay';
 import { ConvergencePlotsDisplay } from './home/results/ConvergencePlotsDisplay';
+import { ConditionalEVMatrixDisplay } from './home/results/ConditionalEVMatrixDisplay'; // Added import
 
 // Common Plot Layout (can be further refined or moved to a constants/config file)
 const commonPlotLayout = {
   font: {
     size: 10
   },
-  margin: { t: 30, r: 60, b: 200, l: 120 } // Default, can be overridden by specific plots
+  margin: { t: 0, b: 0, l: 0, r: 0 } // Default, can be overridden by specific plots
 };
 
 export default function Home() {
@@ -45,11 +46,13 @@ export default function Home() {
   } = useHomeForm();
 
   const {
-    matrix,
+    matrixData, // Renamed from matrix to matrixData
     solution,
+    conditionalEVMatrix, // Added new state from hook
     handleCalculate,
-    // setMatrix, // Not typically set directly from Home
-    // setSolution // Not typically set directly from Home
+    // setMatrixData,
+    // setSolution,
+    // setConditionalEVMatrix // Not typically set directly from Home
   } = useGameCalculation();
 
   // State for window width for responsive plots
@@ -70,7 +73,7 @@ export default function Home() {
     gameState.maxActions
   );
   
-  const reversedMatrixData = formatMatrixForDisplay(matrix.heroMatrix, matrix.villainMatrix);
+  const reversedMatrixData = formatMatrixForDisplay(matrixData.heroMatrix, matrixData.villainMatrix);
 
   const onCalculate = () => {
     handleCalculate(gameState, setErrors);
@@ -167,11 +170,14 @@ export default function Home() {
             solution={solution}
             gameStateIterations={gameState.iterations}
             convergenceThreshold={gameState.convergenceThreshold}
+            heroRangeProbs={matrixData.heroRangeProbs} // Pass new prop
+            villainRangeProbs={matrixData.villainRangeProbs} // Pass new prop
+            equityMatrix={matrixData.equityMatrix} // Pass new prop
           />
         )}
 
         {solution && (
-          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: 3, mb:3 }}>
+          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 2, mb:3 }}> {/* Adjusted grid */}
             <StrategyPlotDisplay
               playerType="Hero"
               strategyProbs={solution.row_strategy}
@@ -188,10 +194,12 @@ export default function Home() {
               commonPlotLayout={commonPlotLayout}
               windowInnerWidth={windowInnerWidth}
             />
+            {/* Add ConditionalEVMatrixDisplay here */}
+            <ConditionalEVMatrixDisplay matrixOutput={conditionalEVMatrix} />
           </Box>
         )}
         
-        {solution && matrix.heroMatrix.length > 0 && ( // Ensure matrix has data before rendering
+        {solution && matrixData.heroMatrix.length > 0 && ( // Ensure matrixData has data
             <GameMatrixPlotDisplay
                 solution={solution}
                 reversedMatrix={reversedMatrixData}

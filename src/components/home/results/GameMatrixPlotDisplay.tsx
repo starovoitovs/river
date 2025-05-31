@@ -2,7 +2,7 @@ import { Typography, Box, IconButton } from '@mui/material';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import Plot from 'react-plotly.js';
 import { useNavigate } from 'react-router-dom';
-import { ANNOTATION_THRESHOLD, DRAWER_WIDTH } from '../homeConstants';
+import { ANNOTATION_THRESHOLD_EXPONENT, DRAWER_WIDTH } from '../homeConstants';
 
 interface MatrixCell {
   hero: number;
@@ -73,20 +73,20 @@ export const GameMatrixPlotDisplay: React.FC<GameMatrixPlotDisplayProps> = ({
           xaxis: {
             tickangle: -90,
             automargin: true,
-            tickfont: { size: 7 },
+            tickfont: { size: 8 },
             tickvals: Array.from({ length: villainLabels.length }, (_, i) => i),
             ticktext: villainLabels.map((label, i) =>
-              (solution.col_strategy[i] > ANNOTATION_THRESHOLD ? '* ' : '') + label
+              (solution.col_strategy[i] > 10 ** -ANNOTATION_THRESHOLD_EXPONENT ? '* ' : '') + label
             ),
             side: 'bottom'
           },
           yaxis: {
             tickangle: 0,
             automargin: true,
-            tickfont: { size: 7 },
+            tickfont: { size: 8 },
             tickvals: Array.from({ length: heroLabels.length }, (_, i) => i),
             ticktext: [...heroLabels].reverse().map((label, i) =>
-              (solution.row_strategy[heroLabels.length - 1 - i] > ANNOTATION_THRESHOLD ? '* ' : '') + label
+              (solution.row_strategy[heroLabels.length - 1 - i] > 10 ** -ANNOTATION_THRESHOLD_EXPONENT ? '* ' : '') + label
             ),
           },
           margin: commonPlotLayout.margin, // Ensure margin is part of commonPlotLayout

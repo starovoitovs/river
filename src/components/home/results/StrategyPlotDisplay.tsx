@@ -3,7 +3,7 @@ import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import Plot from 'react-plotly.js';
 import { useNavigate } from 'react-router-dom';
-import { ANNOTATION_THRESHOLD, DRAWER_WIDTH } from '../homeConstants'; // Assuming DRAWER_WIDTH is needed for layout calculations
+import { ANNOTATION_THRESHOLD_EXPONENT, DRAWER_WIDTH } from '../homeConstants'; // Assuming DRAWER_WIDTH is needed for layout calculations
 
 interface StrategyPlotDisplayProps {
   playerType: 'Hero' | 'Villain';
@@ -26,7 +26,7 @@ export const StrategyPlotDisplay: React.FC<StrategyPlotDisplayProps> = ({
 
   const filteredData = strategyProbs
     .map((prob, index) => ({ prob, label: labels[index] }))
-    .filter(item => item.prob > ANNOTATION_THRESHOLD)
+    .filter(item => item.prob > 10 ** -ANNOTATION_THRESHOLD_EXPONENT)
     .sort((a, b) => a.prob - b.prob); // Sort for consistent bar order if needed, or by label
 
   return (
@@ -55,7 +55,7 @@ export const StrategyPlotDisplay: React.FC<StrategyPlotDisplayProps> = ({
             y: filteredData.map(item => item.label),
             type: 'bar',
             orientation: 'h',
-            text: filteredData.map(item => item.prob.toFixed(4)),
+            text: filteredData.map(item => item.prob.toFixed(ANNOTATION_THRESHOLD_EXPONENT)),
             hoverlabel: { bgcolor: 'white' },
             hovertemplate: '%{x:.3f}<extra></extra>',
             showlegend: false,
@@ -66,7 +66,7 @@ export const StrategyPlotDisplay: React.FC<StrategyPlotDisplayProps> = ({
         ]}
         layout={{
           ...commonPlotLayout,
-          width: (windowInnerWidth - DRAWER_WIDTH - 100) / 2, // Adjusted for typical usage
+          width: (windowInnerWidth - DRAWER_WIDTH - 100) / 3, // Adjusted for typical usage
           height: 300, // Or make height dynamic/prop
           xaxis: {
             automargin: true,
@@ -80,7 +80,7 @@ export const StrategyPlotDisplay: React.FC<StrategyPlotDisplayProps> = ({
             side: 'left',
             fixedrange: true
           },
-          margin: { t: 30, r: 60, b: 50, l: 200 } // Default, can be part of commonPlotLayout
+          margin: { t: 0, r: 0, b: 0, l: 0 } // Default, can be part of commonPlotLayout
         }}
         config={{ responsive: true }} // Ensure responsive is enabled
       />

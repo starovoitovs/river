@@ -151,5 +151,3 @@ The Kelly criterion analysis has several limitations in tournament contexts:
    - May miss profitable high-variance plays
    - Cannot evaluate ladder-up situations
    - Doesn't consider stack pressure dynamics
-
-While the tool provides valuable insights for chip accumulation and risk management, tournament players should consider these limitations when making final decisions.

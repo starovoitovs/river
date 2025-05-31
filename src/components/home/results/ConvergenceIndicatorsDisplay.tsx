@@ -1,5 +1,6 @@
 import { Typography, Box } from '@mui/material';
 import type { GameState } from '../../../types'; // For gameState.iterations
+import type { MatrixCalculationResult } from '../../../hooks/useGameCalculation'; // For matrix data types
 
 interface ConvergenceIndicatorsDisplayProps {
   solution: { // Assuming solution is not null when this component is rendered
@@ -15,15 +16,33 @@ interface ConvergenceIndicatorsDisplayProps {
   };
   gameStateIterations: GameState['iterations']; // Pass only the necessary part of gameState
   convergenceThreshold: GameState['convergenceThreshold'];
+  heroRangeProbs: MatrixCalculationResult['heroRangeProbs']; // New prop
+  villainRangeProbs: MatrixCalculationResult['villainRangeProbs']; // New prop
+  equityMatrix: MatrixCalculationResult['equityMatrix']; // New prop
 }
 
 export const ConvergenceIndicatorsDisplay: React.FC<ConvergenceIndicatorsDisplayProps> = ({
   solution,
   gameStateIterations,
-  convergenceThreshold
+  convergenceThreshold,
+  heroRangeProbs,
+  villainRangeProbs,
+  equityMatrix
 }) => {
   const lastHistoryPoint = solution.convergenceHistory[solution.convergenceHistory.length - 1];
   const isConverged = solution.convergedAtIteration !== null;
+
+  // Calculate Hero Equity (weighted sum of equities)
+  let heroEquity = 0;
+  if (heroRangeProbs.length > 0 && villainRangeProbs.length > 0 && equityMatrix.length > 0) {
+    for (let hIdx = 0; hIdx < heroRangeProbs.length; hIdx++) {
+      for (let vIdx = 0; vIdx < villainRangeProbs.length; vIdx++) {
+        const jointProb = heroRangeProbs[hIdx] * villainRangeProbs[vIdx];
+        const equity = equityMatrix[hIdx][vIdx];
+        heroEquity += jointProb * equity;
+      }
+    }
+  }
 
   return (
     <Box sx={{ mb: 3 }}>
@@ -38,21 +57,19 @@ export const ConvergenceIndicatorsDisplay: React.FC<ConvergenceIndicatorsDisplay
         </Box>
         <Box sx={{ p: 2, border: 1, borderColor: 'divider', borderRadius: 1 }}>
           <Typography variant="subtitle2" color="text.secondary">
+            Hero Equity
+          </Typography>
+          <Typography variant="h6">
+            {(heroEquity * 100).toFixed(2)}% {/* Display as percentage */}
+          </Typography>
+        </Box>
+        <Box sx={{ p: 2, border: 1, borderColor: 'divider', borderRadius: 1 }}>
+          <Typography variant="subtitle2" color="text.secondary">
             Exploitability
           </Typography>
           <Typography variant="h6" component="div">
             Hero: {lastHistoryPoint.heroExploitability.toFixed(3)},
             Villain: {lastHistoryPoint.villainExploitability.toFixed(3)}
-          </Typography>
-        </Box>
-        <Box sx={{ p: 2, border: 1, borderColor: 'divider', borderRadius: 1 }}>
-          <Typography variant="subtitle2" color="text.secondary">
-            Value Range (last 100 iterations)
-          </Typography>
-          <Typography variant="h6">
-            {(Math.max(
-              ...solution.convergenceHistory.slice(-100).map(h => Math.abs(h.heroUtility - h.villainUtility))
-            ) || 0).toFixed(3)}
           </Typography>
         </Box>
         <Box sx={{ p: 2, border: 1, borderColor: 'divider', borderRadius: 1 }}>

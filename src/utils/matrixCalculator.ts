@@ -102,6 +102,9 @@ export function calculateMatrix(state: GameState) {
 
   return {
     heroMatrix,
-    villainMatrix
+    villainMatrix,
+    heroRangeProbs,
+    villainRangeProbs,
+    equityMatrix
   };
 }

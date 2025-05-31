@@ -1,6 +1,6 @@
 import { getHeroActions, getVillainActions } from '../../types';
 import type { GameState } from '../../types';
-import { ANNOTATION_THRESHOLD } from './homeConstants';
+import { ANNOTATION_THRESHOLD_EXPONENT } from './homeConstants';
 
 export const calculateBetAmounts = (
   potSize: number,
@@ -136,10 +136,35 @@ export const formatMatrixForDisplay = (heroMatrix: number[][], villainMatrix: nu
 export const copyStrategyToClipboard = (strategyProbs: number[], labels: string[]) => {
   const formattedStrategy = strategyProbs
     .map((prob, index) => ({ prob, label: labels[index] }))
-    .filter(item => item.prob > ANNOTATION_THRESHOLD)
+    .filter(item => item.prob > 10 ** -ANNOTATION_THRESHOLD_EXPONENT) // Filter out very low probabilities
     .sort((a, b) => b.prob - a.prob) // Sort by probability descending
-    .map(item => `${item.prob.toFixed(4)},"${item.label}"`)
+    .map(item => `${item.prob.toFixed(ANNOTATION_THRESHOLD_EXPONENT)},"${item.label}"`)
     .join('\n');
+navigator.clipboard.writeText(formattedStrategy);
+};
 
-  navigator.clipboard.writeText(formattedStrategy)
+export const transposeEquityMatrixString = (equityMatrixString: string): string => {
+// Parse the string into a 2D array of numbers
+const matrix = equityMatrixString.split('\n').map(row =>
+  row.split(',').map(s => Number(s.trim()))
+);
+
+if (matrix.length === 0 || matrix[0].length === 0) {
+  return ''; // Return empty string for empty or invalid matrix
+}
+
+// Transpose the matrix
+const numRows = matrix.length;
+const numCols = matrix[0].length;
+const transposedMatrix: number[][] = Array(numCols).fill(0).map(() => Array(numRows).fill(0));
+
+for (let i = 0; i < numRows; i++) {
+  for (let j = 0; j < numCols; j++) {
+    // Transpose and apply 100 - x transformation
+    transposedMatrix[j][i] = 100 - matrix[i][j];
+  }
+}
+
+// Convert the transposed matrix back to a comma-separated string
+return transposedMatrix.map(row => row.join(',')).join('\n');
 };

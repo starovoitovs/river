@@ -1,9 +1,11 @@
-import { Accordion, AccordionSummary, AccordionDetails, Typography, Box, IconButton, TextField } from '@mui/material';
+import { Accordion, AccordionSummary, AccordionDetails, Typography, Box, IconButton, TextField, Button } from '@mui/material'; // Added Button
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
+import SwapHorizIcon from '@mui/icons-material/SwapHoriz'; // Added Swap icon
 import { useNavigate } from 'react-router-dom';
 import type { GameState } from '../../../types';
 import type { ErrorsState } from '../../../hooks/useHomeForm';
+import { transposeEquityMatrixString } from '../uiLogicUtils'; // Import the new helper
 
 interface RangeSettingsProps {
   gameState: Pick<GameState, 'heroRanges' | 'villainRanges' | 'equities'>;
@@ -96,6 +98,26 @@ export const RangeSettings: React.FC<RangeSettingsProps> = ({
             },
           }}
         />
+
+        <Button
+          variant="text"
+          startIcon={<SwapHorizIcon />}
+          onClick={() => {
+            // Swap hero and villain ranges
+            handleGameStateChange('heroRanges', gameState.villainRanges);
+            handleGameStateChange('villainRanges', gameState.heroRanges);
+            resetError('heroRanges');
+            resetError('villainRanges');
+
+            // Transpose equities matrix
+            const transposedEquities = transposeEquityMatrixString(gameState.equities);
+            handleGameStateChange('equities', transposedEquities);
+            resetError('equities');
+          }}
+          sx={{ mt: 1, mb: 1 }}
+        >
+          Swap Hero & Villain
+        </Button>
       </AccordionDetails>
     </Accordion>
   );
