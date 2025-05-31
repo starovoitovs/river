@@ -13,7 +13,7 @@ export function solveGame(params: {
   villainMatrix: number[][],
   iterations: number,
   learningRate: number,
-  convergenceThreshold?: number,
+  convergenceThreshold: number,
   heroFixedStrategies?: ParsedFixedStrategyItem[],
   villainFixedStrategies?: ParsedFixedStrategyItem[],
 }): {
@@ -85,7 +85,7 @@ export function solveGame(params: {
     iteration: number
   }[] = [];
 
-  const effectiveConvergenceThreshold = convergenceThreshold || 0.01; // Default 0.01
+  const effectiveConvergenceThreshold = convergenceThreshold; // Default 0.01
   let convergedAtIteration: number | null = null;
 
   // If both strategies are fixed, we don't iterate. We just calculate utilities.
@@ -98,16 +98,17 @@ export function solveGame(params: {
     let heroExploitability = 0;
     let villainExploitability = 0;
 
+    // Calculate expected payoffs
+    // For fixed strategies, payoffs are calculated against their fixed strategy,
+    // but best response is still relevant for exploitability.
+    let row_payoffs = Array(rows).fill(0).map((_, r) =>
+      math.sum(heroMatrix[r].map((v, c) => v * col_avg_strategy[c]))
+    );
+    let col_payoffs = Array(cols).fill(0).map((_, c) =>
+      math.sum(villainMatrix.map((row_val, r_idx) => row_val[c] * row_avg_strategy[r_idx]))
+    );
+
     if (!isHeroFixed || !isVillainFixed) { // Perform updates only if at least one strategy is not fixed
-      // Calculate expected payoffs
-      // For fixed strategies, payoffs are calculated against their fixed strategy,
-      // but best response is still relevant for exploitability.
-      const row_payoffs = Array(rows).fill(0).map((_, r) =>
-        math.sum(heroMatrix[r].map((v, c) => v * col_avg_strategy[c]))
-      );
-      const col_payoffs = Array(cols).fill(0).map((_, c) =>
-        math.sum(villainMatrix.map((row_val, r_idx) => row_val[c] * row_avg_strategy[r_idx]))
-      );
 
       if (!isHeroFixed) {
         const max_row_payoff = Math.max(...row_payoffs);
@@ -138,6 +139,13 @@ export function solveGame(params: {
         math.sum(row.map((v, c_idx) => v * row_avg_strategy[r_idx] * col_avg_strategy[c_idx]))
       ));
 
+      row_payoffs = Array(rows).fill(0).map((_, r) =>
+        math.sum(heroMatrix[r].map((v, c) => v * col_avg_strategy[c]))
+      );
+      col_payoffs = Array(cols).fill(0).map((_, c) =>
+        math.sum(villainMatrix.map((row_val, r_idx) => row_val[c] * row_avg_strategy[r_idx]))
+      );
+      
       // Calculate exploitability
       // If hero is fixed, their exploitability is how much villain could gain.
       // If villain is fixed, their exploitability is how much hero could gain.

@@ -25,7 +25,7 @@ const initialGameState: GameState = {
   equities: '60, 100\n0, 60',
   iterations: 10000,
   learningRate: 0.01,
-  convergenceThreshold: 0.001,
+  convergenceThreshold: 0.01,
   heroFixedStrategyInput: '',
   villainFixedStrategyInput: ''
 };

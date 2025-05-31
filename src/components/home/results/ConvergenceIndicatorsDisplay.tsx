@@ -23,9 +23,7 @@ export const ConvergenceIndicatorsDisplay: React.FC<ConvergenceIndicatorsDisplay
   convergenceThreshold
 }) => {
   const lastHistoryPoint = solution.convergenceHistory[solution.convergenceHistory.length - 1];
-  const isConverged =
-    lastHistoryPoint.heroExploitability < convergenceThreshold &&
-    lastHistoryPoint.villainExploitability < convergenceThreshold;
+  const isConverged = solution.convergedAtIteration !== null;
 
   return (
     <Box sx={{ mb: 3 }}>
@@ -59,7 +57,7 @@ export const ConvergenceIndicatorsDisplay: React.FC<ConvergenceIndicatorsDisplay
         </Box>
         <Box sx={{ p: 2, border: 1, borderColor: 'divider', borderRadius: 1 }}>
           <Typography variant="subtitle2" color="text.secondary">
-            {"Convergence Status (both exploitabilities < " + convergenceThreshold.toFixed(3) + ")"}
+            {"Convergence Status (exploitability < " + convergenceThreshold.toFixed(3) + ")"}
           </Typography>
           <Typography variant="h6" sx={{ color: isConverged ? 'success.main' : 'warning.main' }}>
             {isConverged
