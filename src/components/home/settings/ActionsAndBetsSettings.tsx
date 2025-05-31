@@ -98,7 +98,7 @@ export const ActionsAndBetsSettings: React.FC<ActionsAndBetsSettingsProps> = ({
           min={0.1}
           max={5}
           step={0.05}
-          valueFormat={(value) => `${(value * 100).toFixed(2)}% (${amounts.heroBet} BB)`}
+          valueFormat={(value) => `${(value * 100).toFixed(0)}% (${amounts.heroBet.toFixed(2)} BB)`}
         />
 
         {gameState.maxActions >= 3 && (
@@ -113,7 +113,7 @@ export const ActionsAndBetsSettings: React.FC<ActionsAndBetsSettingsProps> = ({
               min={0.1}
               max={5}
               step={0.05}
-              valueFormat={(value) => `${(value * 100).toFixed(2)}% (${amounts.villainBet} BB)`}
+              valueFormat={(value) => `${(value * 100).toFixed(0)}% (${amounts.villainBet.toFixed(2)} BB)`}
             />
             <SliderControl
               label="Villain Raise (pot %)"
@@ -122,7 +122,7 @@ export const ActionsAndBetsSettings: React.FC<ActionsAndBetsSettingsProps> = ({
               min={0.1}
               max={5}
               step={0.05}
-              valueFormat={(value) => `${(value * 100).toFixed(2)}% (${amounts.villainRaise} BB)`}
+              valueFormat={(value) => `${(value * 100).toFixed(0)}% (${amounts.villainRaise.toFixed(2)} BB)`}
             />
           </>
         )}
@@ -139,7 +139,7 @@ export const ActionsAndBetsSettings: React.FC<ActionsAndBetsSettingsProps> = ({
               min={0.1}
               max={5}
               step={0.05}
-              valueFormat={(value) => `${(value * 100).toFixed(2)}% (${amounts.heroRaise} BB)`}
+              valueFormat={(value) => `${(value * 100).toFixed(0)}% (${amounts.heroRaise.toFixed(2)} BB)`}
             />
             <SliderControl
               label="Hero 3-Bet (pot %)"
@@ -148,7 +148,7 @@ export const ActionsAndBetsSettings: React.FC<ActionsAndBetsSettingsProps> = ({
               min={0.1}
               max={5}
               step={0.05}
-              valueFormat={(value) => `${(value * 100).toFixed(2)}% (${amounts.hero3bet} BB)`}
+              valueFormat={(value) => `${(value * 100).toFixed(0)}% (${amounts.hero3bet.toFixed(2)} BB)`}
             />
           </>
         )}

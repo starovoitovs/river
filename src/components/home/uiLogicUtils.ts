@@ -33,11 +33,11 @@ export const calculateBetAmounts = (
   const hero3betSize = villainRaiseSize + (potAfterVillainRaise * hero3bet);
 
   return {
-    heroBet: Math.round(heroBetSize),
-    villainBet: Math.round(villainBetSize),
-    heroRaise: Math.round(heroRaiseSize),
-    villainRaise: Math.round(villainRaiseSize),
-    hero3bet: Math.round(hero3betSize)
+    heroBet: Math.round(heroBetSize * 100) / 100,
+    villainBet: Math.round(villainBetSize * 100) / 100,
+    heroRaise: Math.round(heroRaiseSize * 100) / 100,
+    villainRaise: Math.round(villainRaiseSize * 100) / 100,
+    hero3bet: Math.round(hero3betSize * 100) / 100
   };
 };
 
