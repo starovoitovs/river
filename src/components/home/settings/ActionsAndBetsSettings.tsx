@@ -97,7 +97,7 @@ export const ActionsAndBetsSettings: React.FC<ActionsAndBetsSettingsProps> = ({
           onChange={(value) => handleGameStateChange('heroBet', value)}
           min={0.1}
           max={5}
-          step={0.1}
+          step={0.05}
           valueFormat={(value) => `${(value * 100).toFixed(0)}% (${amounts.heroBet} BB)`}
         />
 
@@ -112,7 +112,7 @@ export const ActionsAndBetsSettings: React.FC<ActionsAndBetsSettingsProps> = ({
               onChange={(value) => handleGameStateChange('villainBet', value)}
               min={0.1}
               max={5}
-              step={0.1}
+              step={0.05}
               valueFormat={(value) => `${(value * 100).toFixed(0)}% (${amounts.villainBet} BB)`}
             />
             <SliderControl
@@ -121,7 +121,7 @@ export const ActionsAndBetsSettings: React.FC<ActionsAndBetsSettingsProps> = ({
               onChange={(value) => handleGameStateChange('villainRaise', value)}
               min={0.1}
               max={5}
-              step={0.1}
+              step={0.05}
               valueFormat={(value) => `${(value * 100).toFixed(0)}% (${amounts.villainRaise} BB)`}
             />
           </>
@@ -138,7 +138,7 @@ export const ActionsAndBetsSettings: React.FC<ActionsAndBetsSettingsProps> = ({
               onChange={(value) => handleGameStateChange('heroRaise', value)}
               min={0.1}
               max={5}
-              step={0.1}
+              step={0.05}
               valueFormat={(value) => `${(value * 100).toFixed(0)}% (${amounts.heroRaise} BB)`}
             />
             <SliderControl
@@ -147,7 +147,7 @@ export const ActionsAndBetsSettings: React.FC<ActionsAndBetsSettingsProps> = ({
               onChange={(value) => handleGameStateChange('hero3bet', value)}
               min={0.1}
               max={5}
-              step={0.1}
+              step={0.05}
               valueFormat={(value) => `${(value * 100).toFixed(0)}% (${amounts.hero3bet} BB)`}
             />
           </>
