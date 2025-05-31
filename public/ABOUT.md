@@ -18,7 +18,7 @@ The game matrix represents:
 
 Each player aims to maximize their own value. The Nash Equilibrium (NE) represents a stable state where neither player can improve by unilaterally changing their strategy. The NE can be a pure strategy (if a saddlepoint exists) or a mixed strategy (otherwise). The bar plots visualize the (potentially mixed) equilibrium strategies.
 
-*   **Linear Payoff:** The game is constant-sum (effectively zero-sum). Hero maximizes Hero's payoff (Y-axis), while Villain simultaneously minimizes Hero's payoff (X-axis). The `initial pot/2` adjustment simplifies the zero-sum analysis.
+*   **Linear Payoff:** The game is constant-sum (effectively zero-sum). Hero maximizes Hero's payoff (Y-axis), while Villain simultaneously maximizes Villain's payoff (X-axis).
 *   **Logarithmic Payoff:** The game becomes non-constant-sum.
 
 We approximate the Nash Equilibrium using fictitious play, as in the non-constant-sum games players' individual log-payoff maximization no longer creates a perfectly antagonistic relationship where one's gain is exactly the other's loss.
@@ -37,12 +37,10 @@ If not using log-payoff, the stack size relative to the current pot size does no
 
 To begin, define each player's range categories (e.g., H1, H2 for Hero; V1, V2 for Villain) and assign their respective probabilities (summing to 1). Then, input a matrix where each cell represents Hero's estimated equity (win probability) when Hero's m-th range category goes against Villain's n-th range category.
 
-#### Example: Heads-Up River - Flush Board
+Consider the following scenario: we model a heads-up river decision where the board has four spades. We categorize each player's hand into two types: "Spade Flush" (Type 1) or "No Spade Flush" (Type 2).
 
-This scenario models a heads-up river decision where the board has four spades. We categorize each player's hand into two types: "Spade Flush" (Type 1) or "No Spade Flush" (Type 2).
-
-*   **Hero Range Probabilities (0.45, 0.55):** Hero is 45% likely to have a "Spade Flush" and 55% likely to have "No Spade Flush."
-*   **Villain Range Probabilities (0.55, 0.45):** Villain is 55% likely to have a "Spade Flush" and 45% likely to have "No Spade Flush."
+*   **Hero Range Frequencies (2, 3):** Hero is 40% likely to have a "Spade Flush" and 60% likely to have "No Spade Flush."
+*   **Villain Range Frequencies (3, 2):** Villain is 60% likely to have a "Spade Flush" and 40% likely to have "No Spade Flush."
 *   **Hero Equities' Matrix:** Hero's win probability in showdowns:
     *   **Hero Flush vs. Villain Flush:** 53% (Hero slightly better on average)
     *   **Hero Flush vs. Villain No Flush:** 100% (Hero wins)
@@ -52,11 +50,11 @@ This scenario models a heads-up river decision where the board has four spades. 
 The inputs in the range settings would be then:
 
 ```
-Hero Range Probabilities:
-45, 55
+Hero Range Frequencies:
+2, 3
 
-Villain Range Probabilities:
-55, 45
+Villain Range Frequencies:
+3, 2
 
 Hero Equities' Matrix:
 53, 100
@@ -130,6 +128,8 @@ Algorithm uses fictitious play to learn the optimal strategy, for which one can 
 * maximum number of iterations
 * learning rate
 * convergence threshold
+
+If the algorithm has not converged, you can examine convergence plots below the game matrix.
 
 ## Advanced Considerations
 
