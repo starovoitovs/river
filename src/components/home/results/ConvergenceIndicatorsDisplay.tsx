@@ -52,7 +52,7 @@ export const ConvergenceIndicatorsDisplay: React.FC<ConvergenceIndicatorsDisplay
             Game value
           </Typography>
           <Typography variant="h6" component="div">
-            (Hero: {solution.heroUtility.toFixed(2)}, Villain: {solution.villainUtility.toFixed(2)})
+            Hero: {solution.heroUtility.toFixed(2)}, Villain: {solution.villainUtility.toFixed(2)}
           </Typography>
         </Box>
         <Box sx={{ p: 2, border: 1, borderColor: 'divider', borderRadius: 1 }}>
