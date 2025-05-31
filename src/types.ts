@@ -14,6 +14,9 @@ export interface GameState {
   equities: string;          // Comma-separated equities for each range combination
   iterations: number;        // Number of solver iterations
   learningRate: number;      // Learning rate for solver
+  convergenceThreshold: number; // Convergence threshold for solver
+  heroFixedStrategyInput?: string; // Optional fixed hero strategy input
+  villainFixedStrategyInput?: string; // Optional fixed villain strategy input
 }
 
 export const getHeroActions = (maxActions: number): string[] => {

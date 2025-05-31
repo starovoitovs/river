@@ -11,8 +11,8 @@ For simplicity, the analysis assumes a maximum of 4 actions per street, resultin
 ### Game matrix and strategies
 
 The game matrix represents:
-- Y-axis: Hero's actions `(action1-action2)`
-- X-axis: Villain's actions `(action1-action2 if Hero checks first/action1-action2 if Hero bets first)`
+- Y-axis: Hero's actions, specified for each possible Hero's range category, e.g. `H1: action1-action2, H2: action1-action2`
+- X-axis: Villain's actions, specified for each possible Hero's range category, e.g. `V1: action1-action2 if Hero checks first/action1-action2 if Hero bets first, V2: ...`
 - Cell entries: value (payoff/log-payoff) for Hero/Villan in the units of BB/log-BB
 - Color-coding: based on the value from Hero's perspective
 
@@ -65,11 +65,11 @@ Hero Equities' Matrix:
 
 ### Actions and bets
 
-#### Max actions
+**Max actions**
 
 Specifies how many total actions for Hero and Villain can take place (basically the number of levels in the game tree above). If less actions, there are less strategies to be considered by the players, and the game matrix is smaller.
 
-#### Bet sizes
+**Bet sizes**
 
 Specify anticipated bet sizes as pot percentages. The amounts in brackets are the total bet amounts after the respective action.
 
@@ -87,7 +87,7 @@ Initial Pot: 20BB
    20BB (initial) + 60BB (call, pot becomes 180BB) + 180BB (raise 100% pot) = 260BB total bet amount
 ```
 
-#### Payoff Type
+**Payoff Type**
 
 * **Linear Payoff**
    - Suitable for cash games with deep stacks
@@ -103,9 +103,33 @@ Initial Pot: 20BB
 
 See [detailed discussion below](#advanced-considerations).
 
+### Fixed Strategies
+
+You can optionally specify fixed strategies for each player.
+* If left empty, solver will look for the optimum for this player.
+* If both strategies are fixed, then the solver onnly computes the value of the game.
+
+The strategies should be written in the form:
+
+```
+Hero strategy:
+3,"H1:ch-ca,H2:ch-fo"
+2,"H1:be-ca,H2:ch-fo"
+
+Villain strategy:
+3,"V1:ch/ca,V2:ch/fo"
+2,"V1:ch/ca,V2:be/fo"
+1,"V1:be/ca,V2:ch/fo"
+```
+
+The first field corresponds to relative frequencies, the second corresponds to the strategy. All strategy entries should be unique. Note that you can copy a strategy from the solver's strategy bar plot output by clicking a clipboard icon.
+
 ### Solver settings
 
-Algorithm uses fictitious play to learn the optimal strategy, for which one can specify number of iterations and learning rate.
+Algorithm uses fictitious play to learn the optimal strategy, for which one can specify:
+* maximum number of iterations
+* learning rate
+* convergence threshold
 
 ## Advanced Considerations
 

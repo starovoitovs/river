@@ -5,7 +5,7 @@ import remarkGfm from 'remark-gfm';
 import rehypeSlug from 'rehype-slug';
 import { Box, Drawer, List, ListItemButton, ListItemText, Toolbar } from '@mui/material';
 
-const DRAWER_WIDTH = 280;
+const DRAWER_WIDTH = 350;
 
 interface TOCItem {
   level: number;
