@@ -4,8 +4,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeSlug from 'rehype-slug';
 import { Box, Drawer, List, ListItemButton, ListItemText, Toolbar } from '@mui/material';
-
-const DRAWER_WIDTH = 350;
+import { DRAWER_WIDTH } from './home/homeConstants';
 
 interface TOCItem {
   level: number;
