@@ -7,6 +7,7 @@ import { useGameCalculation } from '../hooks/useGameCalculation';
 
 // UI and Logic Utilities
 import { generateStrategyLabels, formatMatrixForDisplay, copyStrategyToClipboard } from './home/uiLogicUtils';
+import { getHeroActions, getVillainActions } from '../types'; // Corrected import path
 
 // Constants
 import { DRAWER_WIDTH } from './home/homeConstants';
@@ -185,6 +186,8 @@ export default function Home() {
               onCopyStrategy={handleCopyHeroStrategy}
               commonPlotLayout={commonPlotLayout}
               windowInnerWidth={windowInnerWidth}
+              playerRangesString={gameState.heroRanges}
+              playerActions={getHeroActions(gameState.maxActions)}
             />
             <StrategyPlotDisplay
               playerType="Villain"
@@ -193,6 +196,8 @@ export default function Home() {
               onCopyStrategy={handleCopyVillainStrategy}
               commonPlotLayout={commonPlotLayout}
               windowInnerWidth={windowInnerWidth}
+              playerRangesString={gameState.villainRanges}
+              playerActions={getVillainActions(gameState.maxActions)}
             />
             {/* Add ConditionalEVMatrixDisplay here */}
             <ConditionalEVMatrixDisplay matrixOutput={conditionalEVMatrix} />

@@ -168,3 +168,47 @@ for (let i = 0; i < numRows; i++) {
 // Convert the transposed matrix back to a comma-separated string
 return transposedMatrix.map(row => row.join(', ')).join('\n');
 };
+
+export const abbreviateAction = (action: string, playerType: 'Hero' | 'Villain'): string => {
+  if (playerType === 'Hero') {
+    // Hero action abbreviation logic from generateStrategyLabels
+    return action
+      .split('-')
+      .map((part: string) => part[0] + (part[1] || ''))
+      .join('-');
+  } else {
+    // Villain action abbreviation logic from generateStrategyLabels
+    const [baseAction, response] = action.split('/');
+    const shortBaseAction = baseAction
+      .replace('check-fold', 'ch-fo')
+      .replace('check-call', 'ch-ca')
+      .replace('check-raise', 'ch-3b') // Note: generateStrategyLabels uses ch-3b, ensure consistency
+      .replace('bet-fold', 'be-fo')
+      .replace('bet-call', 'be-ca')
+      .replace('bet-3bet', 'be-3b')
+      .replace('raise-fold', 'ra-fo')
+      .replace('raise-call', 'ra-ca')
+      .replace('check', 'ch')
+      .replace('bet', 'be')
+      .replace('raise', 'ra')
+      .replace('fold', 'fo')
+      .replace('call', 'ca');
+
+    const shortResponse = (response || '')
+      .replace('check-fold', 'ch-fo')
+      .replace('check-call', 'ch-ca')
+      .replace('check-raise', 'ch-3b')
+      .replace('bet-fold', 'be-fo')
+      .replace('bet-call', 'be-ca')
+      .replace('bet-3bet', 'be-3b')
+      .replace('raise-fold', 'ra-fo')
+      .replace('raise-call', 'ra-ca')
+      .replace('check', 'ch')
+      .replace('bet', 'be')
+      .replace('raise', 'ra')
+      .replace('fold', 'fo')
+      .replace('call', 'ca');
+    
+    return shortBaseAction + (response ? '/' + shortResponse : '');
+  }
+};

@@ -16,14 +16,14 @@ The game matrix represents:
 - Cell entries: value (payoff/log-payoff) for Hero/Villan in the units of BB/log-BB
 - Color-coding: based on the value from Hero's perspective
 
-Each player aims to maximize their own value. The Nash Equilibrium (NE) represents a stable state where neither player can improve by unilaterally changing their strategy. The NE can be a pure strategy (if a saddlepoint exists) or a mixed strategy (otherwise). The bar plots visualize the (potentially mixed) equilibrium strategies.
+Each player aims to maximize their own value. The Nash Equilibrium (NE) represents a stable state where neither player can improve by unilaterally changing their strategy. The NE can be a pure strategy (if a saddlepoint exists) or a mixed strategy (otherwise).
+
+The bar plots visualize the (potentially mixed) equilibrium strategies of Hero and Villian (truncated at a certain threshold). You can condition of certain realization of the range by clicking the respective range category above the plot.
 
 *   **Linear Payoff:** The game is constant-sum (effectively zero-sum). Hero maximizes Hero's payoff (Y-axis), while Villain simultaneously maximizes Villain's payoff (X-axis).
 *   **Logarithmic Payoff:** The game becomes non-constant-sum.
 
 We approximate the Nash Equilibrium using fictitious play, as in the non-constant-sum games players' individual log-payoff maximization no longer creates a perfectly antagonistic relationship where one's gain is exactly the other's loss.
-
-The bar plots display Hero's and Villain's mixed strategies (truncated at 0.01).
 
 ## Configuration Options
 
