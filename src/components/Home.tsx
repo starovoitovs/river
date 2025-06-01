@@ -31,7 +31,11 @@ import { SequenceSelector } from './home/results/SequenceSelector'; // Added imp
 import {
   analyzeSequence,
   getAvailablePokerActions,
+  calculateConditionalRangeProbs, // Added
+  parseHeroStrategy,               // Added
+  parseVillainStrategy,            // Added
 } from '../utils/strategySequenceHelper'; // Added imports for sequence logic
+import type { ParsedPlayerStrategy, ConditionalRangeProbsResult } from '../utils/strategySequenceHelper'; // Added
 
 // Common Plot Layout (can be further refined or moved to a constants/config file)
 const commonPlotLayout = {
@@ -39,6 +43,16 @@ const commonPlotLayout = {
     size: 10
   },
   margin: { t: 0, b: 0, l: 0, r: 0 } // Default, can be overridden by specific plots
+};
+
+// Helper function to compare arrays of numbers
+const areArraysEqual = (arr1: number[] | undefined, arr2: number[] | undefined): boolean => {
+  if (arr1 === arr2) return true; // Same reference
+  if (!arr1 || !arr2 || arr1.length !== arr2.length) return false;
+  for (let i = 0; i < arr1.length; i++) {
+    if (arr1[i] !== arr2[i]) return false;
+  }
+  return true;
 };
 
 export default function Home() {
@@ -155,10 +169,101 @@ export default function Home() {
     setSelectedActionSequence(prev => [...prev, newStep]);
   };
   // --- End of Sequence Selector Logic ---
+
+  // --- Start of Probability Calculation Logic (moved from RangeExplorerDisplay) ---
+  const [conditionalHeroProbs, setConditionalHeroProbs] = useState<number[]>([]);
+  const [conditionalVillainProbs, setConditionalVillainProbs] = useState<number[]>([]);
+  const [overallSequenceProbability, setOverallSequenceProbability] = useState<number>(1.0);
+
+  const heroStrategyStringsForCalc = useMemo(() => {
+    if (!solution) return [];
+    return solution.row_strategy.map((prob, index) => `${prob},"${heroLabels[index]}"`);
+  }, [solution, heroLabels]);
+
+  const villainStrategyStringsForCalc = useMemo(() => {
+    if (!solution) return [];
+    return solution.col_strategy.map((prob, index) => `${prob},"${villainLabels[index]}"`);
+  }, [solution, villainLabels]);
+
+  const parsedHeroStrategiesForCalc: ParsedPlayerStrategy[] = useMemo(() => {
+    if (!heroStrategyStringsForCalc.length) return [];
+    try {
+      return heroStrategyStringsForCalc.map(s => parseHeroStrategy(s));
+    } catch (e) {
+      console.error("Error parsing hero strategies in Home.tsx:", e);
+      return [];
+    }
+  }, [heroStrategyStringsForCalc]);
+
+  const parsedVillainStrategiesForCalc: ParsedPlayerStrategy[] = useMemo(() => {
+    if (!villainStrategyStringsForCalc.length) return [];
+    try {
+      return villainStrategyStringsForCalc.map(s => parseVillainStrategy(s));
+    } catch (e) {
+      console.error("Error parsing villain strategies in Home.tsx:", e);
+      return [];
+    }
+  }, [villainStrategyStringsForCalc]);
+
+  useEffect(() => {
+    let newHeroProbs: number[];
+    let newVillainProbs: number[];
+    let newOverallProb: number;
+
+    const currentInitialHeroPriors = matrixData.heroRangeProbs;
+    const currentInitialVillainPriors = matrixData.villainRangeProbs;
+
+    if (parsedHeroStrategiesForCalc.length > 0 &&
+        parsedVillainStrategiesForCalc.length > 0 &&
+        currentInitialHeroPriors && currentInitialVillainPriors) {
+      const results: ConditionalRangeProbsResult = calculateConditionalRangeProbs(
+        selectedActionSequence,
+        parsedHeroStrategiesForCalc,
+        parsedVillainStrategiesForCalc,
+        currentInitialHeroPriors,
+        currentInitialVillainPriors,
+        gameState.maxActions
+      );
+      newHeroProbs = results.heroProbs;
+      newVillainProbs = results.villainProbs;
+      newOverallProb = results.totalSequenceProb;
+    } else if (selectedActionSequence.length === 0 && currentInitialHeroPriors && currentInitialVillainPriors) {
+      newHeroProbs = currentInitialHeroPriors;
+      newVillainProbs = currentInitialVillainPriors;
+      newOverallProb = 1.0;
+    } else {
+      // Default if strategies or initial priors are not ready
+      newHeroProbs = currentInitialHeroPriors || [];
+      newVillainProbs = currentInitialVillainPriors || [];
+      newOverallProb = 1.0;
+    }
+
+    if (!areArraysEqual(conditionalHeroProbs, newHeroProbs)) {
+      setConditionalHeroProbs(newHeroProbs);
+    }
+    if (!areArraysEqual(conditionalVillainProbs, newVillainProbs)) {
+      setConditionalVillainProbs(newVillainProbs);
+    }
+    if (overallSequenceProbability !== newOverallProb) {
+      setOverallSequenceProbability(newOverallProb);
+    }
+
+  }, [
+    selectedActionSequence,
+    parsedHeroStrategiesForCalc,
+    parsedVillainStrategiesForCalc,
+    matrixData.heroRangeProbs, // Dependency: if this is a new ref, effect runs
+    matrixData.villainRangeProbs, // Dependency: if this is a new ref, effect runs
+    gameState.maxActions,
+    // Current state values (conditionalHeroProbs, etc.) are NOT added to dependencies here
+    // as this effect is responsible for setting them. The areArraysEqual check prevents unnecessary setStates.
+  ]);
+  // --- End of Probability Calculation Logic ---
   
+  // These are still used by RangeExplorerDisplay for its own strategy parsing if needed,
+  // and by StrategyPlotDisplay for labels.
   const heroStrategyStrings = useMemo(() => {
     if (!solution) return [];
-    // Ensure parseHeroStrategy is available or this logic is self-contained if it was only for RangeExplorerDisplay
     return solution.row_strategy.map((prob, index) => `${prob},"${heroLabels[index]}"`);
   }, [solution, heroLabels]);
 
@@ -166,6 +271,7 @@ export default function Home() {
     if (!solution) return [];
     return solution.col_strategy.map((prob, index) => `${prob},"${villainLabels[index]}"`);
   }, [solution, villainLabels]);
+
 
   const handleCopyHeroStrategy = () => {
     if (solution) {
@@ -285,12 +391,14 @@ export default function Home() {
             <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 2, mb: 2 }}>
               <RangeExplorerDisplay
                 maxStreetActions={gameState.maxActions}
-                initialHeroPriors={matrixData.heroRangeProbs}
-                initialVillainPriors={matrixData.villainRangeProbs}
-                heroStrategies={heroStrategyStrings}
-                villainStrategies={villainStrategyStrings}
-                selectedSequence={selectedActionSequence} // Pass selectedSequence
-                // onSequenceChange is no longer needed here as Home manages it
+                initialHeroPriors={matrixData.heroRangeProbs || []}
+                initialVillainPriors={matrixData.villainRangeProbs || []}
+                heroStrategies={heroStrategyStrings} // For internal parsing if still needed by RED
+                villainStrategies={villainStrategyStrings} // For internal parsing if still needed by RED
+                selectedSequence={selectedActionSequence}
+                conditionalHeroProbs={conditionalHeroProbs} // New Prop
+                conditionalVillainProbs={conditionalVillainProbs} // New Prop
+                overallSequenceProbability={overallSequenceProbability} // New Prop
               />
               <StrategyPlotDisplay
                 playerType="Hero"
@@ -301,7 +409,8 @@ export default function Home() {
                 windowInnerWidth={windowInnerWidth}
                 playerRangesString={gameState.heroRanges}
                 playerActions={getHeroActions(gameState.maxActions)}
-                selectedActionSequence={selectedActionSequence} // New Prop
+                selectedActionSequence={selectedActionSequence}
+                overallSequenceProbability={overallSequenceProbability} // New Prop
               />
               <StrategyPlotDisplay
                 playerType="Villain"
@@ -312,7 +421,8 @@ export default function Home() {
                 windowInnerWidth={windowInnerWidth}
                 playerRangesString={gameState.villainRanges}
                 playerActions={getVillainActions(gameState.maxActions)}
-                selectedActionSequence={selectedActionSequence} // New Prop
+                selectedActionSequence={selectedActionSequence}
+                overallSequenceProbability={overallSequenceProbability} // New Prop
               />
             </Box>
             <Box sx={{ mb: 2 }}> {/* Row 2 for ConditionalEVMatrixDisplay */}

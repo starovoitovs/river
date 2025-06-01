@@ -19,7 +19,8 @@ interface StrategyPlotDisplayProps {
   windowInnerWidth: number;
   playerRangesString: string; // e.g., "0.5,0.5"
   playerActions: string[]; // e.g., ["check", "bet"]
-  selectedActionSequence?: SelectedActionSequence; // New optional prop
+  selectedActionSequence?: SelectedActionSequence;
+  overallSequenceProbability?: number; // New optional prop
 }
 
 export const StrategyPlotDisplay: React.FC<StrategyPlotDisplayProps> = ({
@@ -31,7 +32,8 @@ export const StrategyPlotDisplay: React.FC<StrategyPlotDisplayProps> = ({
   windowInnerWidth,
   playerRangesString,
   playerActions,
-  selectedActionSequence // Destructure new prop
+  selectedActionSequence,
+  overallSequenceProbability // Destructure new prop
 }) => {
   const navigate = useNavigate();
   const [selectedRangeIndex, setSelectedRangeIndex] = useState<number | null>(null);
@@ -128,6 +130,11 @@ export const StrategyPlotDisplay: React.FC<StrategyPlotDisplayProps> = ({
 
 
   const plotData = useMemo(() => {
+    // If the overall sequence probability is 0 (or undefined), the plot should be empty.
+    if (overallSequenceProbability !== undefined && overallSequenceProbability < 1e-9) { // Using a small epsilon for float comparison
+      return [];
+    }
+
     let strategiesToConsider: ParsedPlayerStrategy[] = [...allParsedPlayerStrategies];
 
     // 1. Filter by selectedActionSequence
@@ -218,7 +225,7 @@ export const StrategyPlotDisplay: React.FC<StrategyPlotDisplayProps> = ({
       .map((prob, index) => ({ prob, label: currentLabels[index] }))
       .filter(item => item.prob > 10 ** -ANNOTATION_THRESHOLD_EXPONENT && item.label !== undefined)
       .sort((a, b) => a.prob - b.prob);
-  }, [allParsedPlayerStrategies, selectedActionSequence, selectedRangeIndex, playerType, playerActions, numRanges, calculateMarginalStrategyForDisplay]); // Added calculateMarginalStrategyForDisplay to dependencies
+  }, [allParsedPlayerStrategies, selectedActionSequence, selectedRangeIndex, playerType, playerActions, numRanges, calculateMarginalStrategyForDisplay, overallSequenceProbability]);
 
 
   const handleRangeToggle = (

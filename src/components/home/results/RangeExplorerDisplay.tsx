@@ -1,4 +1,3 @@
-import React, { useState, useEffect, useMemo } from 'react';
 import { Box, Typography, Paper } from '@mui/material'; // Removed ButtonBase
 import Plot from 'react-plotly.js';
 import type {
@@ -9,88 +8,41 @@ import type {
 import {
   // getAvailablePokerActions, // No longer needed here
   // analyzeSequence, // No longer needed here
-  parseHeroStrategy,
-  parseVillainStrategy,
-  calculateConditionalRangeProbs, // Added import
+  // parseHeroStrategy, // No longer needed here
+  // parseVillainStrategy, // No longer needed here
+  // calculateConditionalRangeProbs, // No longer needed here
 } from '../../../utils/strategySequenceHelper';
-import type { ParsedPlayerStrategy, ConditionalRangeProbsResult } from '../../../utils/strategySequenceHelper'; // Keep this for type info, Added ConditionalRangeProbsResult
+// import type { ParsedPlayerStrategy, ConditionalRangeProbsResult } from '../../../utils/strategySequenceHelper'; // No longer needed here
 
 interface RangeExplorerDisplayProps {
   maxStreetActions: number; // From GameState.maxActions
   initialHeroPriors: number[]; // e.g. [0.5, 0.5] for H1, H2
   initialVillainPriors: number[]; // e.g. [0.6, 0.4] for V1, V2
-  heroStrategies: string[]; // Array of raw hero strategy strings "prob,label"
-  villainStrategies: string[]; // Array of raw villain strategy strings "prob,label"
-  selectedSequence: SelectedActionSequence; // Added prop
-  // onSequenceChange is removed
-  // TODO: Add other necessary props like parsed strategies, player range names etc.
+  heroStrategies: string[]; // Array of raw hero strategy strings "prob,label" - still needed if parsing is done here for some reason, or for labels
+  villainStrategies: string[]; // Array of raw villain strategy strings "prob,label" - same as above
+  selectedSequence: SelectedActionSequence;
+  conditionalHeroProbs: number[]; // New Prop
+  conditionalVillainProbs: number[]; // New Prop
+  overallSequenceProbability: number; // New Prop
 }
 
 // actionDisplayName is removed, it's in SequenceSelector.tsx
 
 export const RangeExplorerDisplay: React.FC<RangeExplorerDisplayProps> = ({
-  maxStreetActions,
-  initialHeroPriors,
-  initialVillainPriors,
-  heroStrategies, // Will be used later for probability calcs
-  villainStrategies, // Will be used later for probability calcs
-  selectedSequence, // Use selectedSequence from props
+  // maxStreetActions, // This prop might not be directly used anymore if not calculating probs here
+  initialHeroPriors, // Still used for x-axis labels if conditionalProbs are empty
+  initialVillainPriors, // Still used for x-axis labels if conditionalProbs are empty
+  // heroStrategies, // Not directly used if not parsing here
+  // villainStrategies, // Not directly used if not parsing here
+  selectedSequence,
+  conditionalHeroProbs, // Use from props
+  conditionalVillainProbs, // Use from props
+  overallSequenceProbability, // Use from props
 }) => {
-  // Local selectedSequence state is removed
+  // Local state for conditionalProbs and currentSequenceProbability is removed.
+  // useEffect for calculating these is removed.
+  // parsedHeroStrategies and parsedVillainStrategies memos are removed.
   
-  // fullActionHistory state and related logic are removed
-
-  const [conditionalHeroProbs, setConditionalHeroProbs] = useState<number[]>(initialHeroPriors);
-  const [conditionalVillainProbs, setConditionalVillainProbs] = useState<number[]>(initialVillainPriors);
-  const [currentSequenceProbability, setCurrentSequenceProbability] = useState<number>(1.0);
-
-
-  const parsedHeroStrategies: ParsedPlayerStrategy[] = useMemo(() => {
-    try {
-      return heroStrategies.map(s => parseHeroStrategy(s));
-    } catch (e) {
-      console.error("Error parsing hero strategies:", e);
-      return [];
-    }
-  }, [heroStrategies]);
-
-  const parsedVillainStrategies: ParsedPlayerStrategy[] = useMemo(() => {
-    try {
-      return villainStrategies.map(s => parseVillainStrategy(s));
-    } catch (e) {
-      console.error("Error parsing villain strategies:", e);
-      return [];
-    }
-  }, [villainStrategies]);
-
-  // playerToAct, currentPotState, availableActions are removed, managed by Home.tsx
-
-  useEffect(() => {
-    // onSequenceChange(selectedSequence) is removed; Home.tsx manages selectedSequence
-
-    if (parsedHeroStrategies.length > 0 && parsedVillainStrategies.length > 0) {
-      const results: ConditionalRangeProbsResult = calculateConditionalRangeProbs(
-        selectedSequence, // Use selectedSequence from props
-        parsedHeroStrategies,
-        parsedVillainStrategies,
-        initialHeroPriors,
-        initialVillainPriors,
-        maxStreetActions
-      );
-      setConditionalHeroProbs(results.heroProbs);
-      setConditionalVillainProbs(results.villainProbs);
-      setCurrentSequenceProbability(results.totalSequenceProb);
-    } else if (selectedSequence.length === 0) {
-      // Reset to priors if strategies aren't parsed yet (e.g. on initial load before strategies are available)
-      // or if sequence is explicitly empty
-      setConditionalHeroProbs(initialHeroPriors);
-      setConditionalVillainProbs(initialVillainPriors);
-      setCurrentSequenceProbability(1.0);
-    }
-    // fullActionHistory update logic is removed.
-
-  }, [selectedSequence, maxStreetActions, initialHeroPriors, initialVillainPriors, parsedHeroStrategies, parsedVillainStrategies]); // Removed onSequenceChange from dependencies
-
   // Click handlers (handleNextActionSelect, handleStartClick, handleHistoryActionClick) are removed.
   // actionBoxSx and actionTextSx are removed.
 
@@ -149,8 +101,8 @@ export const RangeExplorerDisplay: React.FC<RangeExplorerDisplayProps> = ({
         </Box>
       </Box>
       <Typography variant="caption" display="block" sx={{mt: 1, textAlign: 'center'}}>
-          Sequence Probability: {currentSequenceProbability.toFixed(4)}
-          {currentSequenceProbability === 0 && selectedSequence.length > 0 && " (Impossible Sequence)"}
+          Sequence Probability: {overallSequenceProbability.toFixed(4)}
+          {overallSequenceProbability === 0 && selectedSequence.length > 0 && " (Impossible Sequence)"}
       </Typography>
     </Paper>
   );
