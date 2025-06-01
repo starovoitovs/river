@@ -1,2 +1,2 @@
 export const DRAWER_WIDTH = 350;
-export const ANNOTATION_THRESHOLD_EXPONENT = 3;
+export const ANNOTATION_THRESHOLD_EXPONENT = 2;

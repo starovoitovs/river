@@ -45,7 +45,7 @@ export const ConvergenceIndicatorsDisplay: React.FC<ConvergenceIndicatorsDisplay
   }
 
   return (
-    <Box sx={{ mb: 3 }}>
+    <Box sx={{ mb: 2 }}>
       <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 2 }}>
         <Box sx={{ p: 2, border: 1, borderColor: 'divider', borderRadius: 1 }}>
           <Typography variant="subtitle2" color="text.secondary">

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Tooltip } from '@mui/material';
+import { Box, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Tooltip } from '@mui/material';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import IconButton from '@mui/material/IconButton';
 import { useNavigate } from 'react-router-dom';
@@ -41,7 +41,7 @@ export const ConditionalEVMatrixDisplay: React.FC<ConditionalEVMatrixDisplayProp
           </IconButton>
         </Tooltip>
       </Typography>
-      <TableContainer component={Paper} sx={{ maxHeight: 300 }}> {/* Max height to match strategy plots */}
+      <TableContainer sx={{ border: 1, borderColor: 'divider', borderRadius: 1, borderBottom: 0 }}>
         <Table stickyHeader size="small">
           <TableHead>
             <TableRow>

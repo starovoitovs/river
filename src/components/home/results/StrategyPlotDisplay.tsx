@@ -1,4 +1,4 @@
-import { Typography, Box, IconButton, ToggleButton, ToggleButtonGroup } from '@mui/material'; // Added ToggleButton, ToggleButtonGroup
+import { Typography, Box, IconButton, ToggleButton, ToggleButtonGroup, Paper } from '@mui/material'; // Added ToggleButton, ToggleButtonGroup
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import Plot from 'react-plotly.js';
@@ -6,6 +6,9 @@ import { useNavigate } from 'react-router-dom';
 import { useState, useMemo } from 'react'; // Added useState, useMemo
 import { ANNOTATION_THRESHOLD_EXPONENT, DRAWER_WIDTH } from '../homeConstants';
 import { abbreviateAction } from '../uiLogicUtils'; // Import the new helper
+import type { SelectedActionSequence, ParsedPlayerStrategy, ParsedHeroRangeStrategy, ParsedVillainRangeStrategy } from '../../../utils/strategySequenceHelper';
+import { parseHeroStrategy, parseVillainStrategy } from '../../../utils/strategySequenceHelper';
+
 
 interface StrategyPlotDisplayProps {
   playerType: 'Hero' | 'Villain';
@@ -16,6 +19,7 @@ interface StrategyPlotDisplayProps {
   windowInnerWidth: number;
   playerRangesString: string; // e.g., "0.5,0.5"
   playerActions: string[]; // e.g., ["check", "bet"]
+  selectedActionSequence?: SelectedActionSequence; // New optional prop
 }
 
 export const StrategyPlotDisplay: React.FC<StrategyPlotDisplayProps> = ({
@@ -26,60 +30,97 @@ export const StrategyPlotDisplay: React.FC<StrategyPlotDisplayProps> = ({
   commonPlotLayout,
   windowInnerWidth,
   playerRangesString,
-  playerActions
+  playerActions,
+  selectedActionSequence // Destructure new prop
 }) => {
   const navigate = useNavigate();
   const [selectedRangeIndex, setSelectedRangeIndex] = useState<number | null>(null);
+
+  const allParsedPlayerStrategies = useMemo((): ParsedPlayerStrategy[] => {
+    const parseFn = playerType === 'Hero' ? parseHeroStrategy : parseVillainStrategy;
+    try {
+      return labels.map((label, index) => {
+        const fullStrategyString = `${strategyProbs[index]},"${label}"`; // Construct full string "prob,label"
+        return parseFn(fullStrategyString);
+      });
+    } catch (e) {
+      console.error(`Error parsing ${playerType} strategies:`, e);
+      return [];
+    }
+  }, [labels, strategyProbs, playerType]);
 
   const numRanges = useMemo(() => {
     return playerRangesString.split(',').filter(r => r.trim() !== '').length;
   }, [playerRangesString]);
 
-  const calculateMarginalStrategy = (
-    overallStrategyProbs: number[],
-    pureStrategyLabels: string[],
+  // This function calculates marginal strategy for a *single given range index*
+  // from a list of *already filtered and re-weighted* pure strategies.
+  const calculateMarginalStrategyForDisplay = (
+    filteredPureStrategies: ParsedPlayerStrategy[], // Input is now parsed and potentially filtered
     rangeIdx: number,
     playerChar: 'H' | 'V',
-    actionsForPlayer: string[]
+    actionsForPlayer: string[] // All possible actions for this player type (e.g. ["ch","be"] or ["ch-fo", "ch-ca"...])
   ): { marginalProbs: number[], marginalLabels: string[] } => {
-    const marginalActionProbs = new Map<string, number>();
-    let totalProbForSelectedRangeActions = 0;
+    const marginalActionProbs = new Map<string, number>(); // Stores sum of probabilities for each action string (e.g. "ch-ca")
+    let totalProbOfStrategiesInvolvingThisRange = 0;
 
-    pureStrategyLabels.forEach((label, i) => {
-      const prob = overallStrategyProbs[i];
-      if (prob === 0) return;
+    filteredPureStrategies.forEach((pureStrategy: ParsedPlayerStrategy) => {
+      if (pureStrategy.probability === 0) return;
 
-      const parts = label.split(',');
-      const targetPart = parts.find(p => p.startsWith(`${playerChar}${rangeIdx + 1}:`));
-      
-      if (targetPart) {
-        const action = targetPart.substring(targetPart.indexOf(':') + 1);
-        marginalActionProbs.set(action, (marginalActionProbs.get(action) || 0) + prob);
-        totalProbForSelectedRangeActions += prob;
+      const rangeSpecificStrategy = pureStrategy.ranges.find(
+        (r: ParsedHeroRangeStrategy | ParsedVillainRangeStrategy) => r.rangeName === `${playerChar}${rangeIdx + 1}`
+      );
+
+      if (rangeSpecificStrategy) {
+        let actionString: string;
+        if (playerType === 'Hero') {
+          actionString = (rangeSpecificStrategy as ParsedHeroRangeStrategy).actionSequence.join('-');
+        } else { // Villain
+          const villainRangePart = pureStrategy.rawLabel.split(',').find(p => p.startsWith(`${playerChar}${rangeIdx + 1}:`));
+          if (villainRangePart) {
+            actionString = villainRangePart.substring(villainRangePart.indexOf(':') + 1);
+          } else {
+            actionString = "error"; // Should not happen
+          }
+        }
+        if (actionString !== "error") {
+            marginalActionProbs.set(actionString, (marginalActionProbs.get(actionString) || 0) + pureStrategy.probability);
+            totalProbOfStrategiesInvolvingThisRange += pureStrategy.probability;
+        }
       }
     });
-
-    if (totalProbForSelectedRangeActions === 0) {
-      // Fallback: if no strategies involve this range (should not happen if ranges are defined),
-      // or if all probabilities are zero for strategies involving this range.
-      // Show all possible actions for this range with 0 probability.
+    
+    if (totalProbOfStrategiesInvolvingThisRange === 0) {
+      const abbreviatedActionsForPlayer = actionsForPlayer.map(act => abbreviateAction(act, playerType));
       return {
-        marginalProbs: actionsForPlayer.map(() => 0),
-        marginalLabels: actionsForPlayer.map(action => `${playerChar}${rangeIdx + 1}:${action}`)
+        marginalProbs: abbreviatedActionsForPlayer.map(() => 0),
+        marginalLabels: abbreviatedActionsForPlayer.map(abbrevAct => `${playerChar}${rangeIdx + 1}:${abbrevAct}`)
       };
     }
-    
+
     const finalMarginalProbs: number[] = [];
     const finalMarginalLabels: string[] = [];
+    
+    const uniqueActionsForRange = new Set<string>();
+    filteredPureStrategies.forEach((ps: ParsedPlayerStrategy) => {
+        const rs = ps.ranges.find((r: ParsedHeroRangeStrategy | ParsedVillainRangeStrategy) => r.rangeName === `${playerChar}${rangeIdx + 1}`);
+        if (rs) {
+            let actionStr: string;
+            if (playerType === 'Hero') actionStr = (rs as ParsedHeroRangeStrategy).actionSequence.join('-');
+            else {
+                 const villainRangePart = ps.rawLabel.split(',').find(p => p.startsWith(`${playerChar}${rangeIdx + 1}:`));
+                 actionStr = villainRangePart ? villainRangePart.substring(villainRangePart.indexOf(':') + 1) : "error";
+            }
+            if (actionStr !== "error") uniqueActionsForRange.add(actionStr);
+        }
+    });
 
-    // Iterate through the original (full name) actions to maintain order and ensure all are represented
-    actionsForPlayer.forEach(fullAction => {
-      const shortAction = abbreviateAction(fullAction, playerType); // Abbreviate the full action name
-      const prob = marginalActionProbs.get(shortAction) || 0; // Use abbreviated action to get probability
-      
-      finalMarginalProbs.push(prob / totalProbForSelectedRangeActions); // Normalize
-      // For the label, we want to show the abbreviated action as that's what's in the pure strategy strings
-      finalMarginalLabels.push(`${playerChar}${rangeIdx + 1}:${shortAction}`);
+    const sortedUniqueActions = Array.from(uniqueActionsForRange).sort();
+
+    sortedUniqueActions.forEach(actionString => {
+      const prob = marginalActionProbs.get(actionString) || 0;
+      finalMarginalProbs.push(prob / totalProbOfStrategiesInvolvingThisRange); // Normalize
+      finalMarginalLabels.push(`${playerChar}${rangeIdx + 1}:${actionString}`);
     });
     
     return { marginalProbs: finalMarginalProbs, marginalLabels: finalMarginalLabels };
@@ -87,13 +128,81 @@ export const StrategyPlotDisplay: React.FC<StrategyPlotDisplayProps> = ({
 
 
   const plotData = useMemo(() => {
+    let strategiesToConsider: ParsedPlayerStrategy[] = [...allParsedPlayerStrategies];
+
+    // 1. Filter by selectedActionSequence
+    if (selectedActionSequence && selectedActionSequence.length > 0) {
+      const playerSpecificActionsInSequence = selectedActionSequence.filter(step => step.player === playerType);
+
+      if (playerSpecificActionsInSequence.length > 0) {
+        strategiesToConsider = allParsedPlayerStrategies.filter((pureStrategy: ParsedPlayerStrategy) => {
+          // A pure strategy is kept if AT LEAST ONE of its range strategies
+          // for the current playerType is consistent with playerSpecificActionsInSequence.
+          return pureStrategy.ranges.some((rangeStrat) => {
+            let actionsOfRangeToMatch: string[]; // string[] because PokerAction is a string union
+
+            if (playerType === 'Hero') {
+              actionsOfRangeToMatch = (rangeStrat as ParsedHeroRangeStrategy).actionSequence;
+              // Check consistency for Hero range
+              if (playerSpecificActionsInSequence.length > actionsOfRangeToMatch.length) return false;
+              for (let i = 0; i < playerSpecificActionsInSequence.length; i++) {
+                if (actionsOfRangeToMatch[i] !== playerSpecificActionsInSequence[i].action) return false;
+              }
+              return true; // This Hero range is consistent
+            } else { // PlayerType is Villain
+              const villainRangeStrategy = rangeStrat as ParsedVillainRangeStrategy;
+              const path1Actions = villainRangeStrategy.ifHeroChecks;
+              const path2Actions = villainRangeStrategy.ifHeroBets;
+              let path1Matches = true;
+              let path2Matches = true;
+
+              // Check consistency with ifHeroChecks path
+              if (playerSpecificActionsInSequence.length > path1Actions.length) {
+                path1Matches = false;
+              } else {
+                for (let i = 0; i < playerSpecificActionsInSequence.length; i++) {
+                  if (path1Actions[i] !== playerSpecificActionsInSequence[i].action) {
+                    path1Matches = false;
+                    break;
+                  }
+                }
+              }
+              if (path1Matches) return true; // Consistent via ifHeroChecks path
+
+              // Check consistency with ifHeroBets path
+              if (playerSpecificActionsInSequence.length > path2Actions.length) {
+                path2Matches = false;
+              } else {
+                for (let i = 0; i < playerSpecificActionsInSequence.length; i++) {
+                  if (path2Actions[i] !== playerSpecificActionsInSequence[i].action) {
+                    path2Matches = false;
+                    break;
+                  }
+                }
+              }
+              if (path2Matches) return true; // Consistent via ifHeroBets path
+              
+              return false; // Neither path of this villain range matches
+            }
+          });
+        });
+
+        // Re-normalize probabilities of the kept strategies
+        const totalProbFiltered = strategiesToConsider.reduce((sum: number, s: ParsedPlayerStrategy) => sum + s.probability, 0);
+        if (totalProbFiltered > 0) {
+          strategiesToConsider = strategiesToConsider.map((s: ParsedPlayerStrategy) => ({ ...s, probability: s.probability / totalProbFiltered }));
+        } else {
+          strategiesToConsider = [];
+        }
+      }
+    }
+
     let currentProbs: number[];
     let currentLabels: string[];
 
     if (selectedRangeIndex !== null && numRanges > 0) {
-      const marginalData = calculateMarginalStrategy(
-        strategyProbs,
-        labels,
+      const marginalData = calculateMarginalStrategyForDisplay( // Corrected function name
+        strategiesToConsider,
         selectedRangeIndex,
         playerType === 'Hero' ? 'H' : 'V',
         playerActions
@@ -101,15 +210,16 @@ export const StrategyPlotDisplay: React.FC<StrategyPlotDisplayProps> = ({
       currentProbs = marginalData.marginalProbs;
       currentLabels = marginalData.marginalLabels;
     } else {
-      currentProbs = strategyProbs;
-      currentLabels = labels;
+      currentProbs = strategiesToConsider.map((s: ParsedPlayerStrategy) => s.probability);
+      currentLabels = strategiesToConsider.map((s: ParsedPlayerStrategy) => s.rawLabel);
     }
-
+    
     return currentProbs
       .map((prob, index) => ({ prob, label: currentLabels[index] }))
-      .filter(item => item.prob > 10 ** -ANNOTATION_THRESHOLD_EXPONENT)
-      .sort((a, b) => a.prob - b.prob); // Sort for consistent bar order
-  }, [strategyProbs, labels, selectedRangeIndex, playerType, playerActions, numRanges]);
+      .filter(item => item.prob > 10 ** -ANNOTATION_THRESHOLD_EXPONENT && item.label !== undefined)
+      .sort((a, b) => a.prob - b.prob);
+  }, [allParsedPlayerStrategies, selectedActionSequence, selectedRangeIndex, playerType, playerActions, numRanges, calculateMarginalStrategyForDisplay]); // Added calculateMarginalStrategyForDisplay to dependencies
+
 
   const handleRangeToggle = (
     _: React.MouseEvent<HTMLElement>,
@@ -119,7 +229,7 @@ export const StrategyPlotDisplay: React.FC<StrategyPlotDisplayProps> = ({
   };
 
   return (
-    <Box>
+    <Paper elevation={0} sx={{ p: 2 }}>
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <Typography variant="h6" sx={{ fontWeight: 500 }} gutterBottom>
           {playerType} Strategy {selectedRangeIndex !== null ? `(Range ${playerType[0]}${selectedRangeIndex + 1})` : '(Overall)'}
@@ -150,7 +260,7 @@ export const StrategyPlotDisplay: React.FC<StrategyPlotDisplayProps> = ({
           onChange={handleRangeToggle}
           aria-label={`${playerType} range selection`}
           size="small"
-          sx={{ mb: 1, display: 'flex', flexWrap: 'wrap' }}
+          sx={{ mt: 1, mb: 3, display: 'flex', flexWrap: 'wrap' }}
         >
           {Array.from({ length: numRanges }).map((_, index) => (
             <ToggleButton
@@ -183,7 +293,7 @@ export const StrategyPlotDisplay: React.FC<StrategyPlotDisplayProps> = ({
         ]}
         layout={{
           ...commonPlotLayout,
-          width: (windowInnerWidth - DRAWER_WIDTH - 100) / 3, // Adjusted for typical usage
+          width: (windowInnerWidth - DRAWER_WIDTH - 200) / 3, // Adjusted for typical usage
           height: 300, // Or make height dynamic/prop
           xaxis: {
             automargin: true,
@@ -201,6 +311,6 @@ export const StrategyPlotDisplay: React.FC<StrategyPlotDisplayProps> = ({
         }}
         config={{ responsive: true }} // Ensure responsive is enabled
       />
-    </Box>
+    </Paper>
   );
 };
