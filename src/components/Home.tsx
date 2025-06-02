@@ -1,6 +1,8 @@
 import { useEffect, useState, useMemo } from 'react';
-import { Box, Drawer, Toolbar, Button } from '@mui/material';
+import { Box, Drawer, Toolbar, Button, Modal, TextField, Typography, Stack } from '@mui/material';
 import type { SelectedActionSequence, ActionStep, PokerAction } from '../utils/strategySequenceHelper'; // Added ActionStep, PokerAction
+import { dump, load } from 'js-yaml';
+import type { GameState } from '../types';
 
 // Hooks
 import { useHomeForm } from '../hooks/useHomeForm';
@@ -64,7 +66,8 @@ export default function Home() {
     expanded,
     handleAccordionChange,
     handleGameStateChange,
-    resetError
+    resetError,
+    setFullGameState // Added for import functionality
   } = useHomeForm();
 
   const {
@@ -80,6 +83,8 @@ export default function Home() {
   // State for window width for responsive plots
   const [windowInnerWidth, setWindowInnerWidth] = useState(window.innerWidth);
   const [selectedActionSequence, setSelectedActionSequence] = useState<SelectedActionSequence>([]);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [importText, setImportText] = useState('');
 
   useEffect(() => {
     const handleResize = () => {
@@ -285,6 +290,95 @@ export default function Home() {
     }
   };
 
+  const handleExport = () => {
+    try {
+      const yamlString = dump(gameState);
+      navigator.clipboard.writeText(yamlString);
+    } catch (error) {
+      console.error('Error exporting game state:', error);
+      alert('Error exporting game state. See console for details.');
+    }
+  };
+
+  const handleOpenImportModal = () => {
+    setIsImportModalOpen(true);
+  };
+
+  const handleCloseImportModal = () => {
+    setIsImportModalOpen(false);
+    setImportText(''); // Clear text on close
+  };
+
+  const handleImportTextChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setImportText(event.target.value);
+  };
+
+  const handleImportSubmit = () => {
+    try {
+      const rawImportedData = load(importText);
+
+      if (typeof rawImportedData !== 'object' || rawImportedData === null) {
+        alert('Invalid game state format: Not an object.');
+        return;
+      }
+
+      const importedState = rawImportedData as Partial<GameState>; // Cast as partial for checking
+
+      const requiredNumericFields: (keyof GameState)[] = [
+        'maxActions', 'heroStack', 'villainStack', 'potSize',
+        'heroBet', 'heroRaise', 'hero3bet', 'villainBet', 'villainRaise',
+        'iterations', 'learningRate', 'convergenceThreshold'
+      ];
+      const requiredStringFields: (keyof GameState)[] = [
+        'useLogUtility', 'heroRanges', 'villainRanges', 'equities'
+      ];
+
+      for (const field of requiredNumericFields) {
+        if (typeof importedState[field] !== 'number') {
+          alert(`Invalid game state: Field '${field}' is missing or not a number.`);
+          return;
+        }
+      }
+
+      for (const field of requiredStringFields) {
+        if (typeof importedState[field] !== 'string') {
+          alert(`Invalid game state: Field '${field}' is missing or not a string.`);
+          return;
+        }
+      }
+      
+      if (importedState.useLogUtility !== 'linear' && importedState.useLogUtility !== 'logarithmic') {
+        alert(`Invalid game state: Field 'useLogUtility' must be 'linear' or 'logarithmic'.`);
+        return;
+      }
+
+      // Optional fields: check type if present
+      if (importedState.heroFixedStrategyInput !== undefined && typeof importedState.heroFixedStrategyInput !== 'string') {
+        alert(`Invalid game state: Field 'heroFixedStrategyInput' must be a string if present.`);
+        return;
+      }
+      if (importedState.villainFixedStrategyInput !== undefined && typeof importedState.villainFixedStrategyInput !== 'string') {
+        alert(`Invalid game state: Field 'villainFixedStrategyInput' must be a string if present.`);
+        return;
+      }
+
+      // If all checks pass, cast to full GameState and proceed
+      const validatedGameState = importedState as GameState;
+
+      setFullGameState(validatedGameState);
+      handleCalculate(validatedGameState, setErrors);
+      handleCloseImportModal();
+
+    } catch (error) {
+      console.error('Error importing game state:', error);
+      let message = 'Error importing game state. Make sure it is valid YAML.';
+      if (error instanceof Error) {
+        message += ` Details: ${error.message}`;
+      }
+      alert(message);
+    }
+  };
+
   return (
     <Box sx={{ display: 'flex' }}>
       <Drawer
@@ -347,6 +441,22 @@ export default function Home() {
           borderRight: 1,
           borderColor: 'divider'
         }}>
+          <Stack spacing={1} sx={{ mb: 1 }}>
+            <Button
+              variant="outlined"
+              fullWidth
+              onClick={handleExport}
+            >
+              Copy Config
+            </Button>
+            <Button
+              variant="outlined"
+              fullWidth
+              onClick={handleOpenImportModal}
+            >
+              Import Config
+            </Button>
+          </Stack>
           <Button
             variant="contained"
             fullWidth
@@ -357,6 +467,44 @@ export default function Home() {
           </Button>
         </Box>
       </Drawer>
+
+      <Modal
+        open={isImportModalOpen}
+        onClose={handleCloseImportModal}
+        aria-labelledby="import-game-state-modal-title"
+        aria-describedby="import-game-state-modal-description"
+      >
+        <Box sx={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          width: 600,
+          bgcolor: 'background.paper',
+          border: '2px solid #000',
+          boxShadow: 24,
+          p: 4,
+        }}>
+          <Typography id="import-game-state-modal-title" variant="h6" component="h2">
+            Import Game State (YAML)
+          </Typography>
+          <TextField
+            id="import-game-state-modal-description"
+            multiline
+            rows={15}
+            fullWidth
+            variant="outlined"
+            value={importText}
+            onChange={handleImportTextChange}
+            placeholder="Paste your YAML game state here..."
+            sx={{ mt: 2, mb: 2 }}
+          />
+          <Stack direction="row" spacing={2} justifyContent="flex-end">
+            <Button onClick={handleCloseImportModal}>Cancel</Button>
+            <Button variant="contained" onClick={handleImportSubmit}>Import</Button>
+          </Stack>
+        </Box>
+      </Modal>
 
       <Box component="main" sx={{ flexGrow: 1, p: 2 }}>
         {solution && (

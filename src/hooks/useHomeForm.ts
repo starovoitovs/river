@@ -59,6 +59,15 @@ export const useHomeForm = () => {
     setErrors(prev => ({ ...prev, [key]: "" }));
   };
 
+  const setFullGameState = (newState: GameState) => {
+    // Potentially add validation or merging logic here if needed
+    setGameState(newState);
+    // Reset errors when a new state is imported
+    setErrors(initialErrorsState);
+    // Optionally, close all accordions or set a default one
+    setExpanded(false);
+  };
+
   return {
     gameState,
     setGameState, // Exposing setGameState directly for now, can be refined
@@ -69,6 +78,7 @@ export const useHomeForm = () => {
     handleGameStateChange,
     handleErrorChange,
     resetError,
+    setFullGameState, // Added this function
     initialGameState // Exporting for potential reset or comparison
   };
 };
