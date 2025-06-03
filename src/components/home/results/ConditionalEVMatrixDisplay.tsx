@@ -4,9 +4,10 @@ import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import IconButton from '@mui/material/IconButton';
 import { useNavigate } from 'react-router-dom';
 import type { ConditionalEVMatrixOutput } from '../../../utils/conditionalEVCalculator';
+import type { SelectedActionSequence } from '../../../utils/strategySequenceHelper'; // Corrected import path
 
 interface ConditionalEVMatrixDisplayProps {
-  matrixOutput: ConditionalEVMatrixOutput | null;
+  matrixOutput: (ConditionalEVMatrixOutput & { selectedActionSequence?: SelectedActionSequence }) | null;
   // Add any other necessary props, e.g., for styling or help tooltips
 }
 
@@ -80,7 +81,7 @@ export const ConditionalEVMatrixDisplay: React.FC<ConditionalEVMatrixDisplayProp
 
   return (
     <Box sx={{ width: '100%' }}>
-      <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
+      <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', mb: 0 }}>
         Conditionals
         <Tooltip title="Conditional EV and Joint Probability for each Hero range vs Villain range matchup. Click for more info.">
           <IconButton onClick={() => navigate('/help#conditional-ev-matrix')} size="small" sx={{ ml: 0.5 }}>
@@ -88,7 +89,12 @@ export const ConditionalEVMatrixDisplay: React.FC<ConditionalEVMatrixDisplayProp
           </IconButton>
         </Tooltip>
       </Typography>
-      <TableContainer sx={{ border: 1, borderColor: 'divider', borderRadius: 1, borderBottom: 0 }}>
+      {matrixOutput?.selectedActionSequence && matrixOutput.selectedActionSequence.length > 0 && (
+        <Typography variant="caption" component="small" display="block" gutterBottom sx={{ mb: 1, fontStyle: 'italic' }}>
+          Conditional on "{matrixOutput.selectedActionSequence.map(step => step.action).join(' → ')}"
+        </Typography>
+      )}
+      <TableContainer sx={{ border: 1, borderColor: 'divider', borderRadius: 1, borderBottom: 0, mt: 1 }}>
         <Table stickyHeader size="small">
           <TableHead>
             <TableRow>

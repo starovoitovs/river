@@ -255,13 +255,32 @@ export const StrategyPlotDisplay: React.FC<StrategyPlotDisplayProps> = ({
     playerType === 'Villain' ?
       (externalVillainConditioningIndex !== null && externalVillainConditioningIndex !== undefined ? externalVillainConditioningIndex : null) :
     null;
+
+  const conditions: string[] = [];
+  if (displayTitleRangeIndex !== null) {
+    conditions.push(`${playerType[0]}${displayTitleRangeIndex + 1}`);
+  }
+  if (selectedActionSequence && selectedActionSequence.length > 0) {
+    const sequenceString = selectedActionSequence.map(step => step.action).join(' → ');
+    conditions.push(`"${sequenceString}"`);
+  }
+
+  let subtitleText = "";
+  if (conditions.length > 0) {
+    subtitleText = `Conditional on ${conditions.join(' and ')}`;
+  }
     
   return (
     <Paper elevation={0} sx={{ py: 2 }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <Typography variant="h6" sx={{ fontWeight: 500 }} gutterBottom>
-          {playerType} Strategy {displayTitleRangeIndex !== null ? `(${playerType[0]}${displayTitleRangeIndex + 1} Sub-Range)` : '(Overall)'}
-        </Typography>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+        <Box> {/* Title and Subtitle container */}
+          <Typography variant="h6" sx={{ fontWeight: 500 }} gutterBottom={!subtitleText}>
+            {playerType} Strategy
+          </Typography>
+          {subtitleText && (
+            <Typography variant="caption" component="small" display="block" gutterBottom sx={{ fontStyle: 'italic' }} dangerouslySetInnerHTML={{ __html: subtitleText }} />
+          )}
+        </Box>
         <Box>
           <IconButton
             onClick={onCopyStrategy}
@@ -315,7 +334,6 @@ export const StrategyPlotDisplay: React.FC<StrategyPlotDisplayProps> = ({
             side: 'left',
             fixedrange: true
           },
-          margin: { t: 0, r: 0, b: 0, l: 0 } // Default, can be part of commonPlotLayout
         }}
         config={{ responsive: true }} // Ensure responsive is enabled
       />

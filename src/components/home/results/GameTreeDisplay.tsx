@@ -1,9 +1,14 @@
 import React from 'react';
 import type { GameTreeNode } from '../../../types';
+import { Box, IconButton, Tooltip, Typography } from '@mui/material';
+import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
+import { useNavigate } from 'react-router-dom';
 
 interface GameTreeDisplayProps {
   treeData: GameTreeNode[] | undefined;
   title?: string;
+  externalHeroConditioningIndex?: number | null;
+  externalVillainConditioningIndex?: number | null;
 }
 
 const GameTreeNodeDisplay: React.FC<{ node: GameTreeNode, level: number }> = ({ node, level }) => {
@@ -56,18 +61,49 @@ const GameTreeNodeDisplay: React.FC<{ node: GameTreeNode, level: number }> = ({ 
   );
 };
 
-const GameTreeDisplay: React.FC<GameTreeDisplayProps> = ({ treeData, title = "Game Tree" }) => {
+const GameTreeDisplay: React.FC<GameTreeDisplayProps> = ({
+  treeData,
+  title = "Game Tree",
+  externalHeroConditioningIndex,
+  externalVillainConditioningIndex
+}) => {
+  const navigate = useNavigate();
+
   if (!treeData || treeData.length === 0) {
     return <div style={{ padding: '10px', fontStyle: 'italic', fontFamily: 'monospace', fontSize: '0.9em' }}>No game tree data available or applicable for current conditioning.</div>;
   }
 
+  let conditionalMessage = "";
+  const heroConditioned = externalHeroConditioningIndex !== null && externalHeroConditioningIndex !== undefined;
+  const villainConditioned = externalVillainConditioningIndex !== null && externalVillainConditioningIndex !== undefined;
+
+  if (heroConditioned && villainConditioned) {
+    conditionalMessage = `Conditional on H${externalHeroConditioningIndex + 1} and V${externalVillainConditioningIndex + 1}`;
+  } else if (heroConditioned) {
+    conditionalMessage = `Conditional on H${externalHeroConditioningIndex + 1}`;
+  } else if (villainConditioned) {
+    conditionalMessage = `Conditional on V${externalVillainConditioningIndex + 1}`;
+  }
+
   return (
-    <div className="game-tree-display" style={{ padding: '10px', border: '1px solid #ddd', borderRadius: '4px', backgroundColor: '#f9f9f9' }}>
-      <h4 style={{ marginTop: 0, marginBottom: '10px', borderBottom: '1px solid #eee', paddingBottom: '5px', fontFamily: 'sans-serif' }}>{title}</h4>
-      {treeData.map((node, index) => (
-        <GameTreeNodeDisplay key={index} node={node} level={0} />
-      ))}
-    </div>
+    <Box>
+      <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', mb: 0 }}>
+        {title}
+        <Tooltip title="Conditional EV and Joint Probability for each Hero range vs Villain range matchup. Click for more info.">
+          <IconButton onClick={() => navigate('/help#conditional-ev-matrix')} size="small" sx={{ ml: 0.5 }}>
+            <HelpOutlineIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+      </Typography>
+      {conditionalMessage && (
+        <Typography variant="caption" component="small" display="block" gutterBottom sx={{ fontStyle: 'italic' }} dangerouslySetInnerHTML={{ __html: conditionalMessage }} />
+      )}
+      <Box className="game-tree-display" style={{ padding: '10px', border: '1px solid #ddd', borderRadius: '4px', backgroundColor: '#f9f9f9' }} sx={{ mt: 1 }}>
+        {treeData.map((node, index) => (
+          <GameTreeNodeDisplay key={index} node={node} level={0} />
+        ))}
+      </Box>
+    </Box>
   );
 };
 

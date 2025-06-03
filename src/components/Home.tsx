@@ -214,8 +214,13 @@ export default function Home() {
         heroRangeLabels: currentHeroRangeLabels,
         villainRangeLabels: currentVillainRangeLabels,
       };
-      const newConditionalMatrix = calculateConditionalEVMatrixUtil(conditionalEVInput);
-      setConditionalEVMatrix(newConditionalMatrix);
+      const calculatedMatrix = calculateConditionalEVMatrixUtil(conditionalEVInput);
+      // Add selectedActionSequence to the matrix output for the display component
+      const newConditionalMatrixWithSequence = calculatedMatrix ? {
+        ...calculatedMatrix,
+        selectedActionSequence: selectedActionSequence // Add the sequence here
+      } : null;
+      setConditionalEVMatrix(newConditionalMatrixWithSequence);
     } else if (setConditionalEVMatrix) {
       setConditionalEVMatrix(null);
     }
@@ -334,7 +339,12 @@ export default function Home() {
             </Box>
 
             {/* Column 2: Game Tree */}
-            <GameTreeDisplay treeData={gameTreeData} title="Game Tree" />
+            <GameTreeDisplay
+              treeData={gameTreeData}
+              title="Game Tree"
+              externalHeroConditioningIndex={selectedHeroRangeIndex}
+              externalVillainConditioningIndex={selectedVillainRangeIndex}
+            />
 
           </Box>
         )}

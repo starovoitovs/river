@@ -176,30 +176,64 @@ function buildTreeRecursive(ctx: GameTreeContext): GameTreeNode[] {
   }
 
 
-  for (const pNode of preliminaryNodes) {
-    if(pNode.conditionalProbability < 1e-9 && availableActions.length > 1) continue;
+  // Filter preliminaryNodes based on their conditional probability before full node construction
+  // This ensures that the normalization sum is based on branches that will actually be shown.
+  const filteredPreliminaryNodes = preliminaryNodes.filter(pNode => {
+    // Normalize the raw probability to get the conditional probability for this specific branch
+    const conditionalProb = sumOfProbsForNormalization > 0 ? pNode.rawProb / sumOfProbsForNormalization : (1 / preliminaryNodes.length);
+    // The overall probability of *this specific branch occurring from the root of the current tree view*
+    const pathOverallProb = ctx.overallProbSoFar * conditionalProb;
+    // Prune if this path's contribution to the current tree's total probability is less than 0.1%
+    // unless it's the only available action (in which case, show it even if low prob)
+    return (pathOverallProb >= 0.001 || preliminaryNodes.length === 1);
+  });
+
+  // Re-calculate sumOfProbsForNormalization based on filtered nodes for accurate conditional probabilities
+  const newSumOfProbsForNormalization = filteredPreliminaryNodes.reduce((sum, node) => sum + node.rawProb, 0);
+
+  for (const pNode of filteredPreliminaryNodes) {
+    // Calculate the final conditional probability for this node
+    let finalConditionalProb: number;
+    if (newSumOfProbsForNormalization === 0 && filteredPreliminaryNodes.length > 0) {
+        finalConditionalProb = 1 / filteredPreliminaryNodes.length;
+    } else if (newSumOfProbsForNormalization > 0) {
+        finalConditionalProb = pNode.rawProb / newSumOfProbsForNormalization;
+    } else { // No nodes left or all rawProbs were zero
+        continue;
+    }
+    
+    // if(finalConditionalProb < 1e-9 && filteredPreliminaryNodes.length > 1) continue; // Already handled by pathOverallProb check essentially
 
     const newSequence: ActionStep[] = [...ctx.currentSequence, { player: ctx.currentPlayer, action: pNode.actionName.split(': ')[1] as PokerAction }];
-    // newOverallProb here is P(CurrentPathFromRoot AND OriginalConditions)
-    // This is because ctx.overallProbSoFar was initialized with overallProbMultiplier
-    const pathProbGivenRootAndOriginalConditions = ctx.overallProbSoFar * pNode.conditionalProbability;
+    const pathProbGivenRootContext = ctx.overallProbSoFar * finalConditionalProb;
 
     const childNode: GameTreeNode = {
       actionName: pNode.actionName,
-      conditionalProbability: pNode.conditionalProbability,
-      overallProbability: undefined, // Will be set for terminal nodes, adjusted for conditioning
+      conditionalProbability: finalConditionalProb,
+      overallProbability: undefined,
       player: pNode.player,
       children: [],
     };
+
+    // Only recurse if the path probability is significant enough
+    // This check is slightly redundant due to the earlier filter, but acts as a safeguard
+    // and ensures we don't build out very deep negligible branches.
+    // The primary pruning is the filter on preliminaryNodes.
+    // if (pathProbGivenRootContext < 0.001 && filteredPreliminaryNodes.length > 1) {
+    //    childNode.isTerminal = true; // Mark as terminal if we prune children
+    //    childNode.overallProbability = pathProbGivenRootContext;
+    //    nodes.push(childNode);
+    //    continue;
+    // }
+
 
     const nextPlayer = ctx.currentPlayer === 'Hero' ? 'Villain' : 'Hero';
     const children = buildTreeRecursive({
       ...ctx,
       currentSequence: newSequence,
       currentPlayer: nextPlayer,
-      conditionalProbSoFar: pNode.conditionalProbability,
-      // Pass the probability of this path *given the original conditions*
-      overallProbSoFar: pathProbGivenRootAndOriginalConditions,
+      conditionalProbSoFar: finalConditionalProb,
+      overallProbSoFar: pathProbGivenRootContext,
       depth: ctx.depth + 1,
     });
 
@@ -207,13 +241,7 @@ function buildTreeRecursive(ctx: GameTreeContext): GameTreeNode[] {
     const endPotState = analyzeSequence(newSequence);
     if (children.length === 0 || endPotState.isBettingClosed || (ctx.depth + 1 >= ctx.maxDepth) ) {
         childNode.isTerminal = true;
-        // Store the P(TerminalNode AND OriginalConditions)
-        // This will be normalized by the caller (calculateAndBuildGameTree) if needed for display.
-        // For now, let's keep it as P(TerminalNode AND OriginalConditions)
-        // The UI will display P(TerminalNode | Condition) = P(TerminalNode AND Condition) / P(Condition)
-        // So, the value stored here should be P(TerminalNode AND Condition)
-        // which is pathProbGivenRootAndOriginalConditions
-        childNode.overallProbability = pathProbGivenRootAndOriginalConditions;
+        childNode.overallProbability = pathProbGivenRootContext;
     }
     nodes.push(childNode);
   }
