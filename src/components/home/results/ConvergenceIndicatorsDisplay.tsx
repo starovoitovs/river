@@ -74,11 +74,11 @@ export const ConvergenceIndicatorsDisplay: React.FC<ConvergenceIndicatorsDisplay
         </Box>
         <Box sx={{ p: 2, border: 1, borderColor: 'divider', borderRadius: 1 }}>
           <Typography variant="subtitle2" color="text.secondary">
-            {"Convergence Status (exploitability < " + convergenceThreshold.toFixed(3) + ")"}
+            {"Convergence Status (explt. < " + convergenceThreshold.toFixed(3) + ")"}
           </Typography>
           <Typography variant="h6" sx={{ color: isConverged ? 'success.main' : 'warning.main' }}>
             {isConverged
-              ? `Converged (${solution.convergedAtIteration !== null ? solution.convergedAtIteration + 1 : gameStateIterations} iterations)`
+              ? `Converged (${solution.convergedAtIteration !== null ? solution.convergedAtIteration + 1 : gameStateIterations}it)`
               : 'Not Converged'}
           </Typography>
         </Box>
