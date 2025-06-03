@@ -9,7 +9,7 @@ interface SliderControlProps {
   step?: number;
   valueFormat?: (value: number) => string;
   // If you need to pass specific keys of GameState for type safety:
-  // gameKey: keyof Omit<GameState, 'useLogUtility' | 'heroRanges' | 'villainRanges' | 'equities' | 'heroFixedStrategyInput' | 'villainFixedStrategyInput'>;
+  // gameKey: keyof Omit<GameState, 'utility' | 'heroRanges' | 'villainRanges' | 'equities' | 'heroFixedStrategyInput' | 'villainFixedStrategyInput'>;
 }
 
 export const SliderControl: React.FC<SliderControlProps> = ({

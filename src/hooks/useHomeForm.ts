@@ -10,7 +10,7 @@ export type ErrorsState = {
 };
 
 const initialGameState: GameState = {
-  useLogUtility: 'linear',
+  utility: 'linear',
   maxActions: 3,
   heroStack: 100,
   villainStack: 100,

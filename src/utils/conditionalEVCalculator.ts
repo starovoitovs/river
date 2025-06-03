@@ -61,7 +61,7 @@ export function calculateConditionalEVMatrix(
     villainRaise,
     hero3bet,
     maxActions, // For getActionPayoffs state param
-    useLogUtility, // For calculateIndividualPayoffs
+    utility, // For calculateIndividualPayoffs
     heroStack, // For calculateIndividualPayoffs
     villainStack // For calculateIndividualPayoffs
   } = gameState;
@@ -162,7 +162,7 @@ export function calculateConditionalEVMatrix(
             const { heroUtility } = calculateIndividualPayoffs(
               heroValue,
               0, // Villain's value/utility is not directly needed for Hero's EV_conditional
-              useLogUtility, // Use destructured useLogUtility
+              utility, // Use destructured utility
               heroStack, // Use destructured heroStack
               villainStack // Use destructured villainStack
             );

@@ -1,5 +1,5 @@
-export function calculateUtility(amount: number, useLogUtility: 'linear' | 'logarithmic', stack: number): number {
-  if (useLogUtility === 'logarithmic') {
+export function calculateUtility(amount: number, utility: 'linear' | 'logarithmic', stack: number): number {
+  if (utility === 'logarithmic') {
     // Add stack to avoid log(0) and make small losses less punishing
     return Math.log(Math.max(amount + stack, 0.01));
   }
@@ -144,11 +144,11 @@ export const getActionPayoffs = (
 export const calculateIndividualPayoffs = (
   heroAmount: number,
   villainAmount: number,
-  useLogUtility: 'linear' | 'logarithmic',
+  utility: 'linear' | 'logarithmic',
   heroStack: number,
   villainStack: number
 ) => {
-  const heroUtility = calculateUtility(heroAmount, useLogUtility, heroStack);
-  const villainUtility = calculateUtility(villainAmount, useLogUtility, villainStack);
+  const heroUtility = calculateUtility(heroAmount, utility, heroStack);
+  const villainUtility = calculateUtility(villainAmount, utility, villainStack);
   return { heroUtility, villainUtility };
 };

@@ -15,7 +15,7 @@ interface ActionsAndBetsSettingsProps {
     | 'villainRaise'
     | 'heroRaise'
     | 'hero3bet'
-    | 'useLogUtility'
+    | 'utility'
     | 'potSize' // Needed for calculateBetAmounts
   >;
   handleGameStateChange: <
@@ -27,7 +27,7 @@ interface ActionsAndBetsSettingsProps {
       | 'villainRaise'
       | 'heroRaise'
       | 'hero3bet'
-      | 'useLogUtility'
+      | 'utility'
     >
   >(
     key: K,
@@ -157,8 +157,8 @@ export const ActionsAndBetsSettings: React.FC<ActionsAndBetsSettingsProps> = ({
           <Select
             size="small"
             label="Payoff"
-            value={gameState.useLogUtility}
-            onChange={(e) => handleGameStateChange('useLogUtility', e.target.value as GameState['useLogUtility'])}
+            value={gameState.utility}
+            onChange={(e) => handleGameStateChange('utility', e.target.value as GameState['utility'])}
             sx={{ minWidth: 120, fontSize: '0.875rem', '& legend span': { opacity: 1, visibility: 'visible', marginTop: '-5px', display: 'block' } }}
             fullWidth
             displayEmpty

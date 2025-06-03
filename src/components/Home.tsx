@@ -330,7 +330,7 @@ export default function Home() {
         'iterations', 'learningRate', 'convergenceThreshold'
       ];
       const requiredStringFields: (keyof GameState)[] = [
-        'useLogUtility', 'heroRanges', 'villainRanges', 'equities'
+        'utility', 'heroRanges', 'villainRanges', 'equities'
       ];
 
       for (const field of requiredNumericFields) {
@@ -347,8 +347,8 @@ export default function Home() {
         }
       }
       
-      if (importedState.useLogUtility !== 'linear' && importedState.useLogUtility !== 'logarithmic') {
-        alert(`Invalid game state: Field 'useLogUtility' must be 'linear' or 'logarithmic'.`);
+      if (importedState.utility !== 'linear' && importedState.utility !== 'logarithmic') {
+        alert(`Invalid game state: Field 'utility' must be 'linear' or 'logarithmic'.`);
         return;
       }
 
@@ -445,16 +445,16 @@ export default function Home() {
             <Button
               variant="outlined"
               fullWidth
-              onClick={handleExport}
+              onClick={handleOpenImportModal}
             >
-              Copy Config
+              Import Config
             </Button>
             <Button
               variant="outlined"
               fullWidth
-              onClick={handleOpenImportModal}
+              onClick={handleExport}
             >
-              Import Config
+              Copy Config
             </Button>
           </Stack>
           <Button

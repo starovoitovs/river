@@ -5,7 +5,7 @@ import { generateStrategies } from './strategyUtils';
 
 export function calculateMatrix(state: GameState) {
   const {
-    useLogUtility,
+    utility,
     heroStack,
     villainStack,
     potSize,
@@ -90,7 +90,7 @@ export function calculateMatrix(state: GameState) {
       const { heroUtility, villainUtility } = calculateIndividualPayoffs(
         totalHeroValue,
         totalVillainValue,
-        useLogUtility,
+        utility,
         heroStack,
         villainStack
       );

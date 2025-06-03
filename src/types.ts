@@ -1,5 +1,5 @@
 export interface GameState {
-  useLogUtility: 'linear' | 'logarithmic';
+  utility: 'linear' | 'logarithmic';
   maxActions: number;         // Maximum number of actions (2, 3, or 4)
   heroStack: number;          // Hero stack size in BB
   villainStack: number;       // Villain stack size in BB
