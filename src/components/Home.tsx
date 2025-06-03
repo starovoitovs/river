@@ -3,6 +3,9 @@ import { Box, Drawer, Toolbar, Button, Modal, TextField, Typography, Stack } fro
 import type { SelectedActionSequence, ActionStep, PokerAction } from '../utils/strategySequenceHelper'; // Added ActionStep, PokerAction
 import { dump, load } from 'js-yaml';
 import type { GameState } from '../types';
+import { generateStrategies } from '../utils/strategyUtils';
+import { calculateConditionalEVMatrix as calculateConditionalEVMatrixUtil } from '../utils/conditionalEVCalculator';
+import type { ConditionalEVMatrixInput } from '../utils/conditionalEVCalculator';
 
 // Hooks
 import { useHomeForm } from '../hooks/useHomeForm';
@@ -28,7 +31,6 @@ import { StrategyPlotDisplay } from './home/results/StrategyPlotDisplay';
 import { GameMatrixPlotDisplay } from './home/results/GameMatrixPlotDisplay';
 import { ConvergencePlotsDisplay } from './home/results/ConvergencePlotsDisplay';
 import { ConditionalEVMatrixDisplay } from './home/results/ConditionalEVMatrixDisplay'; // Added import
-import { RangeExplorerDisplay } from './home/results/RangeExplorerDisplay';
 import { SequenceSelector } from './home/results/SequenceSelector'; // Added import
 import {
   analyzeSequence,
@@ -75,9 +77,7 @@ export default function Home() {
     solution,
     conditionalEVMatrix, // Added new state from hook
     handleCalculate,
-    // setMatrixData,
-    // setSolution,
-    // setConditionalEVMatrix // Not typically set directly from Home
+    setConditionalEVMatrix // Expose setter from the hook
   } = useGameCalculation();
 
   // State for window width for responsive plots
@@ -95,11 +95,13 @@ export default function Home() {
   }, []);
 
 
-  const { heroLabels, villainLabels } = generateStrategyLabels(
-    gameState.heroRanges,
-    gameState.villainRanges,
-    gameState.maxActions
-  );
+  const { heroLabels, villainLabels } = useMemo(() => {
+    return generateStrategyLabels(
+      gameState.heroRanges,
+      gameState.villainRanges,
+      gameState.maxActions
+    );
+  }, [gameState.heroRanges, gameState.villainRanges, gameState.maxActions]);
   
   const reversedMatrixData = formatMatrixForDisplay(matrixData.heroMatrix, matrixData.villainMatrix);
 
@@ -264,19 +266,72 @@ export default function Home() {
     // as this effect is responsible for setting them. The areArraysEqual check prevents unnecessary setStates.
   ]);
   // --- End of Probability Calculation Logic ---
-  
-  // These are still used by RangeExplorerDisplay for its own strategy parsing if needed,
-  // and by StrategyPlotDisplay for labels.
-  const heroStrategyStrings = useMemo(() => {
-    if (!solution) return [];
-    return solution.row_strategy.map((prob, index) => `${prob},"${heroLabels[index]}"`);
-  }, [solution, heroLabels]);
 
-  const villainStrategyStrings = useMemo(() => {
-    if (!solution) return [];
-    return solution.col_strategy.map((prob, index) => `${prob},"${villainLabels[index]}"`);
-  }, [solution, villainLabels]);
+  // --- Effect to recalculate Conditional EV Matrix when solution or sequence-conditioned probs change ---
+  useEffect(() => {
+    if (
+      solution &&
+      matrixData.equityMatrix && matrixData.equityMatrix.length > 0 &&
+      conditionalHeroProbs && conditionalHeroProbs.length > 0 &&
+      conditionalVillainProbs && conditionalVillainProbs.length > 0 &&
+      setConditionalEVMatrix // Ensure setter is available
+    ) {
+      const heroActionsList = getHeroActions(gameState.maxActions);
+      const villainActionsList = getVillainActions(gameState.maxActions);
 
+      // Ensure pure strategies are generated based on the *current* number of conditioned range categories
+      const numHeroConditionedRanges = conditionalHeroProbs.length;
+      const numVillainConditionedRanges = conditionalVillainProbs.length;
+
+      const heroPureStrategies = generateStrategies(numHeroConditionedRanges, heroActionsList);
+      const villainPureStrategies = generateStrategies(numVillainConditionedRanges, villainActionsList);
+
+      const currentHeroRangeLabels = conditionalHeroProbs.map((_, i) => `H${i + 1}`);
+      const currentVillainRangeLabels = conditionalVillainProbs.map((_, i) => `V${i + 1}`);
+      
+      // Ensure the equity matrix dimensions match the conditioned range probabilities
+      // This is a crucial check. If they don't match, it implies an inconsistency.
+      // For now, we'll proceed assuming they match, but this could be a point of failure
+      // if matrixData.equityMatrix is not updated in sync with how ranges are parsed.
+      // The original equityMatrix is based on initial ranges, not conditioned ones.
+      // This part of the logic might need refinement if the equity matrix itself needs to be
+      // re-derived or re-indexed based on the conditioned ranges.
+      // For this iteration, we'll assume the equityMatrix from matrixData is still relevant
+      // and its dimensions align with the *original* number of ranges.
+      // The `calculateConditionalEVMatrixUtil` will internally map based on these original dimensions.
+      // However, the `heroRangeProbs` and `villainRangeProbs` passed to it *will be* the conditioned ones.
+
+      const conditionalEVInput: ConditionalEVMatrixInput = {
+        gameState: gameState,
+        heroRangeProbs: conditionalHeroProbs, // Use sequence-conditioned probabilities
+        villainRangeProbs: conditionalVillainProbs, // Use sequence-conditioned probabilities
+        equityMatrix: matrixData.equityMatrix, // This is still the original equity matrix
+        rowStrategy: solution.row_strategy,
+        colStrategy: solution.col_strategy,
+        heroPureStrategies, // Based on conditioned range count
+        villainPureStrategies, // Based on conditioned range count
+        heroActions: heroActionsList,
+        villainActions: villainActionsList,
+        heroRangeLabels: currentHeroRangeLabels, // Labels for conditioned ranges
+        villainRangeLabels: currentVillainRangeLabels, // Labels for conditioned ranges
+      };
+
+      const newConditionalMatrix = calculateConditionalEVMatrixUtil(conditionalEVInput);
+      setConditionalEVMatrix(newConditionalMatrix);
+    } else if (setConditionalEVMatrix) {
+      setConditionalEVMatrix(null); // Clear if not all data is available
+    }
+  }, [
+    solution,
+    matrixData.equityMatrix, // Specific dependency
+    conditionalHeroProbs,
+    conditionalVillainProbs,
+    gameState, // For maxActions, utility etc.
+    setConditionalEVMatrix, // Include the setter in dependencies
+    heroLabels, // For strategy string generation, indirectly affecting parsed strategies
+    villainLabels // For strategy string generation
+  ]);
+  // --- End of Conditional EV Matrix Recalculation Effect ---
 
   const handleCopyHeroStrategy = () => {
     if (solution) {
@@ -527,6 +582,7 @@ export default function Home() {
               playerToAct={playerToAct}
               maxStreetActions={gameState.maxActions}
               currentPotStateIsBettingClosed={currentPotState.isBettingClosed}
+              overallSequenceProbability={overallSequenceProbability} // Added this prop
               handleStartClick={handleStartClick}
               handleHistoryActionClick={handleHistoryActionClick}
               handleNextActionSelect={handleNextActionSelect}
@@ -537,17 +593,7 @@ export default function Home() {
         {solution && (
           <>
             <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 2, mb: 2 }}>
-              <RangeExplorerDisplay
-                maxStreetActions={gameState.maxActions}
-                initialHeroPriors={matrixData.heroRangeProbs || []}
-                initialVillainPriors={matrixData.villainRangeProbs || []}
-                heroStrategies={heroStrategyStrings} // For internal parsing if still needed by RED
-                villainStrategies={villainStrategyStrings} // For internal parsing if still needed by RED
-                selectedSequence={selectedActionSequence}
-                conditionalHeroProbs={conditionalHeroProbs} // New Prop
-                conditionalVillainProbs={conditionalVillainProbs} // New Prop
-                overallSequenceProbability={overallSequenceProbability} // New Prop
-              />
+              <ConditionalEVMatrixDisplay matrixOutput={conditionalEVMatrix} />
               <StrategyPlotDisplay
                 playerType="Hero"
                 strategyProbs={solution.row_strategy}
@@ -573,12 +619,9 @@ export default function Home() {
                 overallSequenceProbability={overallSequenceProbability} // New Prop
               />
             </Box>
-            <Box sx={{ mb: 2 }}> {/* Row 2 for ConditionalEVMatrixDisplay */}
-              <ConditionalEVMatrixDisplay matrixOutput={conditionalEVMatrix} />
-            </Box>
           </>
         )}
-        
+
         {solution && matrixData.heroMatrix.length > 0 && ( // Ensure matrixData has data
             <GameMatrixPlotDisplay
                 solution={solution}

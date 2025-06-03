@@ -4,7 +4,8 @@ import { getActionPayoffs, calculateIndividualPayoffs } from './calculationHelpe
 // Define the structure for a cell in the Conditional EV Matrix
 export interface ConditionalEVCell {
   pJoint: number;
-  evConditional: number;
+  heroEvConditional: number;
+  villainEvConditional: number;
 }
 
 // Define the structure for the output of the main calculation function
@@ -12,7 +13,8 @@ export interface ConditionalEVMatrixOutput {
   matrix: ConditionalEVCell[][];
   heroRangeCategoryLabels: string[];
   villainRangeCategoryLabels: string[];
-  verificationValue?: number; // Optional: Sum of (P_joint * EV_conditional) for verification
+  heroVerificationValue?: number;
+  villainVerificationValue?: number;
 }
 
 // Define the expected inputs for the main calculation function
@@ -86,14 +88,16 @@ export function calculateConditionalEVMatrix(
 
   const outputMatrix: ConditionalEVCell[][] = Array(numHeroRanges)
     .fill(null)
-    .map(() => Array(numVillainRanges).fill(null).map(() => ({ pJoint: 0, evConditional: 0 }))); // Initialize properly
+    .map(() => Array(numVillainRanges).fill(null).map(() => ({ pJoint: 0, heroEvConditional: 0, villainEvConditional: 0 })));
 
-  let totalVerificationValue = 0;
+  let totalHeroVerificationValue = 0;
+  let totalVillainVerificationValue = 0;
 
   for (let hm_idx = 0; hm_idx < numHeroRanges; hm_idx++) {
     for (let vn_idx = 0; vn_idx < numVillainRanges; vn_idx++) {
       const pJoint = heroRangeProbs[hm_idx] * villainRangeProbs[vn_idx];
-      let currentConditionalEV = 0;
+      let currentHeroConditionalEV = 0;
+      let currentVillainConditionalEV = 0;
 
       // Determine Hero's action probabilities given they hold Hm
       const heroActionProbs: { [action: string]: number } = {};
@@ -146,7 +150,7 @@ export function calculateConditionalEVMatrix(
           const probActionMatchup = probHeroTakesHAction * probVillainTakesVAction;
 
           if (probActionMatchup > 0) {
-            const { heroValue } = getActionPayoffs(
+            const { heroValue, villainValue } = getActionPayoffs(
               h_action,
               v_action,
               equityMatrix[hm_idx][vn_idx],
@@ -159,20 +163,22 @@ export function calculateConditionalEVMatrix(
               hero3BetAmountOnTopOfVillainRaise // Use pre-calculated hero3BetAmountOnTopOfVillainRaise
             );
 
-            const { heroUtility } = calculateIndividualPayoffs(
+            const { heroUtility, villainUtility } = calculateIndividualPayoffs(
               heroValue,
-              0, // Villain's value/utility is not directly needed for Hero's EV_conditional
+              villainValue,
               utility, // Use destructured utility
               heroStack, // Use destructured heroStack
               villainStack // Use destructured villainStack
             );
-            currentConditionalEV += probActionMatchup * heroUtility;
+            currentHeroConditionalEV += probActionMatchup * heroUtility;
+            currentVillainConditionalEV += probActionMatchup * villainUtility;
           }
         }
       }
-      outputMatrix[hm_idx][vn_idx] = { pJoint, evConditional: currentConditionalEV };
+      outputMatrix[hm_idx][vn_idx] = { pJoint, heroEvConditional: currentHeroConditionalEV, villainEvConditional: currentVillainConditionalEV };
       if (pJoint > 0) { // Avoid issues with 0 probability matchups
-        totalVerificationValue += pJoint * currentConditionalEV;
+        totalHeroVerificationValue += pJoint * currentHeroConditionalEV;
+        totalVillainVerificationValue += pJoint * currentVillainConditionalEV;
       }
     }
   }
@@ -181,6 +187,7 @@ export function calculateConditionalEVMatrix(
     matrix: outputMatrix,
     heroRangeCategoryLabels: heroRangeLabels,
     villainRangeCategoryLabels: villainRangeLabels,
-    verificationValue: totalVerificationValue,
+    heroVerificationValue: totalHeroVerificationValue,
+    villainVerificationValue: totalVillainVerificationValue,
   };
 }

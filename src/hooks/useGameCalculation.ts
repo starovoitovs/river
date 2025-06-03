@@ -1,16 +1,10 @@
 import { useState } from 'react';
 import { calculateMatrix, solveGame } from '../utils';
-import { generateStrategies } from '../utils/strategyUtils'; // Corrected import path
 import type { GameState } from '../types';
-import { getHeroActions, getVillainActions } from '../types'; // Added action getters
 import { generateStrategyLabels } from '../components/home/uiLogicUtils';
 import { validateFixedStrategyInput, validateRanges, validateEquitiesMatrix } from '../components/home/validationUtils';
 import type { ErrorsState } from './useHomeForm';
-import {
-  calculateConditionalEVMatrix,
-  type ConditionalEVMatrixOutput,
-  // type ConditionalEVMatrixInput // Input type not strictly needed here for state
-} from '../utils/conditionalEVCalculator';
+import {type ConditionalEVMatrixOutput } from '../utils/conditionalEVCalculator';
 
 export type MatrixCalculationResult = ReturnType<typeof calculateMatrix>; // More robust way to get the type
 
@@ -94,43 +88,12 @@ export const useGameCalculation = () => {
       });
       setSolution(newSolution);
 
-      if (newSolution) {
-        const heroActions = getHeroActions(currentGameState.maxActions);
-        const villainActions = getVillainActions(currentGameState.maxActions);
-        
-        // Ensure heroRangeProbs is not empty before generating strategies
-        const numHeroRanges = calculatedMatrixResult.heroRangeProbs.length;
-        const numVillainRanges = calculatedMatrixResult.villainRangeProbs.length;
-
-        if (numHeroRanges > 0 && numVillainRanges > 0) {
-          const heroPureStrategies = generateStrategies(numHeroRanges, heroActions);
-          const villainPureStrategies = generateStrategies(numVillainRanges, villainActions);
-
-          // Create simple range labels for now
-          const heroRangeLabels = calculatedMatrixResult.heroRangeProbs.map((_, i) => `H${i + 1}`);
-          const villainRangeLabels = calculatedMatrixResult.villainRangeProbs.map((_, i) => `V${i + 1}`);
-
-          const conditionalEVInput = {
-            gameState: currentGameState,
-            heroRangeProbs: calculatedMatrixResult.heroRangeProbs,
-            villainRangeProbs: calculatedMatrixResult.villainRangeProbs,
-            equityMatrix: calculatedMatrixResult.equityMatrix,
-            rowStrategy: newSolution.row_strategy,
-            colStrategy: newSolution.col_strategy,
-            heroPureStrategies,
-            villainPureStrategies,
-            heroActions,
-            villainActions,
-            heroRangeLabels,
-            villainRangeLabels,
-          };
-          setConditionalEVMatrix(calculateConditionalEVMatrix(conditionalEVInput));
-        } else {
-           setConditionalEVMatrix(null); // Cannot calculate if ranges are not defined
-        }
-      } else {
-        setConditionalEVMatrix(null);
+      if (!newSolution) {
+        setConditionalEVMatrix(null); // Clear if no solution
       }
+      // The responsibility for calculating and setting conditionalEVMatrix
+      // will now be handled by a useEffect in Home.tsx,
+      // reacting to changes in solution, matrixData, and sequence-conditioned probabilities.
 
     } else {
       // If validation fails, ensure solution is cleared

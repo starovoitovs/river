@@ -19,6 +19,7 @@ interface SequenceSelectorProps {
   playerToAct: 'Hero' | 'Villain';
   maxStreetActions: number;
   currentPotStateIsBettingClosed: boolean;
+  overallSequenceProbability: number; // Added this prop
   
   handleStartClick: () => void;
   handleHistoryActionClick: (stepIndex: number, actionClicked: PokerAction) => void;
@@ -73,15 +74,17 @@ export const SequenceSelector: React.FC<SequenceSelectorProps> = ({
   playerToAct,
   maxStreetActions,
   currentPotStateIsBettingClosed,
+  overallSequenceProbability, // Added this prop
   handleStartClick,
   handleHistoryActionClick,
   handleNextActionSelect,
 }) => {
   return (
-    <Paper elevation={0} sx={{ display: 'flex', flexDirection: 'row', gap: 0, overflowX: 'auto', alignItems: 'flex-start', border: 1, borderColor: 'divider', borderRadius: 1 }}>
-      {/* Start Box */}
-      <Box
-          sx={{
+    <Box> {/* Wrap Paper and Typography in a Box for layout */}
+      <Paper elevation={0} sx={{ display: 'flex', flexDirection: 'row', gap: 0, overflowX: 'auto', alignItems: 'flex-start', border: 1, borderColor: 'divider', borderRadius: 1, mb: 1 /* Add margin bottom */ }}>
+        {/* Start Box */}
+        <Box
+            sx={{
               ...actionBoxSx,
               alignItems: 'flex-start',
               cursor: 'pointer',
@@ -140,6 +143,11 @@ export const SequenceSelector: React.FC<SequenceSelectorProps> = ({
           ))}
         </Box>
       )}
-    </Paper>
+      </Paper>
+      <Typography variant="caption" display="block" sx={{ textAlign: 'left' }}>
+          Unconditional Action Sequence Probability: {overallSequenceProbability.toFixed(4)}
+          {overallSequenceProbability === 0 && selectedSequence.length > 0 && " (Impossible Sequence)"}
+      </Typography>
+    </Box>
   );
 };
