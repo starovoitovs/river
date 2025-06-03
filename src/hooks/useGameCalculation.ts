@@ -1,15 +1,22 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { calculateMatrix, solveGame } from '../utils';
-import type { GameState } from '../types';
+import type { GameState, GameTreeNode } from '../types';
 import { generateStrategyLabels } from '../components/home/uiLogicUtils';
 import { validateFixedStrategyInput, validateRanges, validateEquitiesMatrix } from '../components/home/validationUtils';
 import type { ErrorsState } from './useHomeForm';
-import {type ConditionalEVMatrixOutput } from '../utils/conditionalEVCalculator';
+import { type ConditionalEVMatrixOutput } from '../utils/conditionalEVCalculator';
+import {
+  type ParsedPlayerStrategy,
+  parseHeroStrategy,
+  parseVillainStrategy
+  // ActionStep, PokerAction, getAvailablePokerActions will be used by gameTreeCalculator
+} from '../utils/strategySequenceHelper';
+import { calculateAndBuildGameTree } from '../utils/gameTreeCalculator';
 
 export type MatrixCalculationResult = ReturnType<typeof calculateMatrix>; // More robust way to get the type
 
 // This type should align with the return type of solveGame
-type SolutionState = {
+export type SolutionResult = { // Renamed for clarity and export
   row_strategy: number[];
   col_strategy: number[];
   heroUtility: number;
@@ -32,15 +39,29 @@ const initialMatrixState: MatrixCalculationResult = {
   equityMatrix: []
 };
 
-export const useGameCalculation = () => {
+export const useGameCalculation = (initialGameState: GameState) => {
+  const [gameState, setGameState] = useState<GameState>(initialGameState);
   const [matrixData, setMatrixData] = useState<MatrixCalculationResult>(initialMatrixState);
-  const [solution, setSolution] = useState<SolutionState>(null);
+  const [solution, setSolution] = useState<SolutionResult>(null);
   const [conditionalEVMatrix, setConditionalEVMatrix] = useState<ConditionalEVMatrixOutput | null>(null);
 
+  // New state for parsed strategies
+  const [allParsedHeroStrategies, setAllParsedHeroStrategies] = useState<ParsedPlayerStrategy[]>([]);
+  const [allParsedVillainStrategies, setAllParsedVillainStrategies] = useState<ParsedPlayerStrategy[]>([]);
+
+  // Updated state for independent Hero/Villain range conditioning
+  const [selectedHeroRangeIndex, setSelectedHeroRangeIndex] = useState<number | null>(null);
+  const [selectedVillainRangeIndex, setSelectedVillainRangeIndex] = useState<number | null>(null);
+
+  // New state for game tree
+  const [gameTreeData, setGameTreeData] = useState<GameTreeNode[] | undefined>(undefined);
+
   const handleCalculate = (
-    currentGameState: GameState,
+    currentGameState: GameState, // Will be set to internal gameState
     updateErrors: (newErrors: ErrorsState) => void
   ) => {
+    setGameState(currentGameState); // Update internal game state
+
     const { heroLabels, villainLabels } = generateStrategyLabels(
       currentGameState.heroRanges,
       currentGameState.villainRanges,
@@ -88,29 +109,90 @@ export const useGameCalculation = () => {
       });
       setSolution(newSolution);
 
-      if (!newSolution) {
+      if (newSolution && newSolution.row_strategy && newSolution.col_strategy) {
+        try {
+          const parsedHeroStrats = heroLabels.map((label, index) =>
+            parseHeroStrategy(`${newSolution.row_strategy[index]},"${label}"`)
+          );
+          setAllParsedHeroStrategies(parsedHeroStrats);
+        } catch (e) {
+          console.error("Error parsing hero strategies:", e);
+          setAllParsedHeroStrategies([]);
+        }
+        try {
+          const parsedVillainStrats = villainLabels.map((label, index) =>
+            parseVillainStrategy(`${newSolution.col_strategy[index]},"${label}"`)
+          );
+          setAllParsedVillainStrategies(parsedVillainStrats);
+        } catch (e) {
+          console.error("Error parsing villain strategies:", e);
+          setAllParsedVillainStrategies([]);
+        }
+      } else {
+        setAllParsedHeroStrategies([]);
+        setAllParsedVillainStrategies([]);
         setConditionalEVMatrix(null); // Clear if no solution
       }
-      // The responsibility for calculating and setting conditionalEVMatrix
-      // will now be handled by a useEffect in Home.tsx,
-      // reacting to changes in solution, matrixData, and sequence-conditioned probabilities.
-
     } else {
-      // If validation fails, ensure solution is cleared
+      // If validation fails, ensure solution and derived states are cleared
       setSolution(null);
       setMatrixData(initialMatrixState);
       setConditionalEVMatrix(null);
+      setAllParsedHeroStrategies([]);
+      setAllParsedVillainStrategies([]);
+      setGameTreeData(undefined);
     }
   };
+  
+  // Placeholder for game tree calculation useEffect
+  useEffect(() => {
+    if (
+      solution &&
+      allParsedHeroStrategies.length > 0 &&
+      allParsedVillainStrategies.length > 0 &&
+      matrixData.heroRangeProbs && matrixData.heroRangeProbs.length > 0 &&
+      matrixData.villainRangeProbs && matrixData.villainRangeProbs.length > 0
+    ) {
+      const tree = calculateAndBuildGameTree(
+        gameState,
+        allParsedHeroStrategies,
+        allParsedVillainStrategies,
+        matrixData.heroRangeProbs,
+        matrixData.villainRangeProbs,
+        // Pass selectedHeroRangeIndex and selectedVillainRangeIndex directly
+        // The calculateAndBuildGameTree function will know they are for Hero and Villain respectively
+        selectedHeroRangeIndex !== null ? selectedHeroRangeIndex : undefined,
+        selectedVillainRangeIndex !== null ? selectedVillainRangeIndex : undefined
+      );
+      setGameTreeData(tree);
+    } else {
+      setGameTreeData(undefined);
+    }
+  }, [
+      solution,
+      allParsedHeroStrategies,
+      allParsedVillainStrategies,
+      matrixData.heroRangeProbs,
+      matrixData.villainRangeProbs,
+      gameState,
+      selectedHeroRangeIndex, // Updated dependency
+      selectedVillainRangeIndex  // Updated dependency
+    ]);
 
   return {
-    matrixData, // Renamed from matrix to matrixData for clarity
+    gameState,
+    matrixData,
     solution,
-    conditionalEVMatrix, // Added new state
+    conditionalEVMatrix,
+    allParsedHeroStrategies,
+    allParsedVillainStrategies,
+    gameTreeData,
+    // Expose new conditioning state and setters
+    selectedHeroRangeIndex,
+    selectedVillainRangeIndex,
     handleCalculate,
-    // Exposing setters if direct manipulation is needed, though handleCalculate is the primary way to update
-    setMatrixData,
-    setSolution,
-    setConditionalEVMatrix
+    setConditionalEVMatrix,
+    setSelectedHeroRangeIndex,
+    setSelectedVillainRangeIndex,
   };
 };

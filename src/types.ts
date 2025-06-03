@@ -56,3 +56,11 @@ export const getVillainActions = (maxActions: number): string[] => {
 };
 
 // Everything needed is in getHeroActions and getVillainActions
+export interface GameTreeNode {
+  actionName: string;
+  conditionalProbability: number; // Probability conditional on being in this node (e.g., 0.8 for 80%)
+  overallProbability?: number;    // Overall probability for terminal nodes (e.g., 0.1 for 10%)
+  children?: GameTreeNode[];
+  player?: 'Hero' | 'Villain'; // Optional: to indicate whose turn it is
+  isTerminal?: boolean; // Optional: to easily identify terminal nodes
+}

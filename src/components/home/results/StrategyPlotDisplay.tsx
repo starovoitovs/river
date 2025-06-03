@@ -1,11 +1,11 @@
-import { Typography, Box, IconButton, ToggleButton, ToggleButtonGroup, Paper } from '@mui/material'; // Added ToggleButton, ToggleButtonGroup
+import { Typography, Box, IconButton, Paper } from '@mui/material'; // Removed ToggleButton, ToggleButtonGroup
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import Plot from 'react-plotly.js';
 import { useNavigate } from 'react-router-dom';
-import { useState, useMemo } from 'react'; // Added useState, useMemo
+import { useMemo } from 'react'; // Removed useState
 import { ANNOTATION_THRESHOLD_EXPONENT, DRAWER_WIDTH } from '../homeConstants';
-import { abbreviateAction } from '../uiLogicUtils'; // Import the new helper
+import { abbreviateAction } from '../uiLogicUtils';
 import type { SelectedActionSequence, ParsedPlayerStrategy, ParsedHeroRangeStrategy, ParsedVillainRangeStrategy } from '../../../utils/strategySequenceHelper';
 import { parseHeroStrategy, parseVillainStrategy } from '../../../utils/strategySequenceHelper';
 
@@ -20,7 +20,11 @@ interface StrategyPlotDisplayProps {
   playerRangesString: string; // e.g., "0.5,0.5"
   playerActions: string[]; // e.g., ["check", "bet"]
   selectedActionSequence?: SelectedActionSequence;
-  overallSequenceProbability?: number; // New optional prop
+  overallSequenceProbability?: number;
+  // Updated props for global range conditioning from Home.tsx
+  // These will tell the plot if a specific hero or villain sub-range is selected globally.
+  externalHeroConditioningIndex?: number | null;
+  externalVillainConditioningIndex?: number | null;
 }
 
 export const StrategyPlotDisplay: React.FC<StrategyPlotDisplayProps> = ({
@@ -30,13 +34,14 @@ export const StrategyPlotDisplay: React.FC<StrategyPlotDisplayProps> = ({
   onCopyStrategy,
   commonPlotLayout,
   windowInnerWidth,
-  playerRangesString,
   playerActions,
   selectedActionSequence,
-  overallSequenceProbability // Destructure new prop
+  overallSequenceProbability,
+  externalHeroConditioningIndex,
+  externalVillainConditioningIndex,
 }) => {
   const navigate = useNavigate();
-  const [selectedRangeIndex, setSelectedRangeIndex] = useState<number | null>(null);
+  // const [selectedRangeIndex, setSelectedRangeIndex] = useState<number | null>(null); // Removed
 
   const allParsedPlayerStrategies = useMemo((): ParsedPlayerStrategy[] => {
     const parseFn = playerType === 'Hero' ? parseHeroStrategy : parseVillainStrategy;
@@ -51,9 +56,9 @@ export const StrategyPlotDisplay: React.FC<StrategyPlotDisplayProps> = ({
     }
   }, [labels, strategyProbs, playerType]);
 
-  const numRanges = useMemo(() => {
-    return playerRangesString.split(',').filter(r => r.trim() !== '').length;
-  }, [playerRangesString]);
+  // const numRanges = useMemo(() => { // numRanges might be derived from playerRangesString or passed directly
+  //   return playerRangesString.split(',').filter(r => r.trim() !== '').length;
+  // }, [playerRangesString]);
 
   // This function calculates marginal strategy for a *single given range index*
   // from a list of *already filtered and re-weighted* pure strategies.
@@ -207,10 +212,18 @@ export const StrategyPlotDisplay: React.FC<StrategyPlotDisplayProps> = ({
     let currentProbs: number[];
     let currentLabels: string[];
 
-    if (selectedRangeIndex !== null && numRanges > 0) {
-      const marginalData = calculateMarginalStrategyForDisplay( // Corrected function name
+    // Determine the active conditioning index for *this specific plot instance*
+    let activeConditioningIndexForThisPlot: number | null = null;
+    if (playerType === 'Hero' && externalHeroConditioningIndex !== null && externalHeroConditioningIndex !== undefined) {
+      activeConditioningIndexForThisPlot = externalHeroConditioningIndex;
+    } else if (playerType === 'Villain' && externalVillainConditioningIndex !== null && externalVillainConditioningIndex !== undefined) {
+      activeConditioningIndexForThisPlot = externalVillainConditioningIndex;
+    }
+
+    if (activeConditioningIndexForThisPlot !== null) {
+      const marginalData = calculateMarginalStrategyForDisplay(
         strategiesToConsider,
-        selectedRangeIndex,
+        activeConditioningIndexForThisPlot,
         playerType === 'Hero' ? 'H' : 'V',
         playerActions
       );
@@ -225,25 +238,33 @@ export const StrategyPlotDisplay: React.FC<StrategyPlotDisplayProps> = ({
       .map((prob, index) => ({ prob, label: currentLabels[index] }))
       .filter(item => item.prob > 10 ** -ANNOTATION_THRESHOLD_EXPONENT && item.label !== undefined)
       .sort((a, b) => a.prob - b.prob);
-  }, [allParsedPlayerStrategies, selectedActionSequence, selectedRangeIndex, playerType, playerActions, numRanges, calculateMarginalStrategyForDisplay, overallSequenceProbability]);
+  }, [
+    allParsedPlayerStrategies,
+    selectedActionSequence,
+    playerType,
+    playerActions,
+    calculateMarginalStrategyForDisplay,
+    overallSequenceProbability,
+    externalHeroConditioningIndex, // New dependency
+    externalVillainConditioningIndex  // New dependency
+  ]);
 
-
-  const handleRangeToggle = (
-    _: React.MouseEvent<HTMLElement>,
-    newRangeIndex: number | null,
-  ) => {
-    setSelectedRangeIndex(newRangeIndex);
-  };
-
+  const displayTitleRangeIndex: number | null =
+    playerType === 'Hero' ?
+      (externalHeroConditioningIndex !== null && externalHeroConditioningIndex !== undefined ? externalHeroConditioningIndex : null) :
+    playerType === 'Villain' ?
+      (externalVillainConditioningIndex !== null && externalVillainConditioningIndex !== undefined ? externalVillainConditioningIndex : null) :
+    null;
+    
   return (
-    <Paper elevation={0} sx={{ p: 2 }}>
+    <Paper elevation={0} sx={{ py: 2 }}>
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <Typography variant="h6" sx={{ fontWeight: 500 }} gutterBottom>
-          {playerType} Strategy {selectedRangeIndex !== null ? `(Range ${playerType[0]}${selectedRangeIndex + 1})` : '(Overall)'}
+          {playerType} Strategy {displayTitleRangeIndex !== null ? `(${playerType[0]}${displayTitleRangeIndex + 1} Sub-Range)` : '(Overall)'}
         </Typography>
         <Box>
           <IconButton
-            onClick={onCopyStrategy} // TODO: This should copy the currently displayed strategy (overall or marginal)
+            onClick={onCopyStrategy}
             size="small"
             sx={{ ml: 0.5 }}
             title="Copy strategy to clipboard"
@@ -260,27 +281,7 @@ export const StrategyPlotDisplay: React.FC<StrategyPlotDisplayProps> = ({
         </Box>
       </Box>
 
-      {numRanges > 0 && ( // Show toggle if there's at least one range
-        <ToggleButtonGroup
-          value={selectedRangeIndex}
-          exclusive
-          onChange={handleRangeToggle}
-          aria-label={`${playerType} range selection`}
-          size="small"
-          sx={{ mt: 1, mb: 3, display: 'flex', flexWrap: 'wrap' }}
-        >
-          {Array.from({ length: numRanges }).map((_, index) => (
-            <ToggleButton
-              key={index}
-              value={index}
-              aria-label={`${playerType[0]}${index + 1}`}
-              sx={{ flexGrow: 1, minWidth: '40px' }} // Ensure buttons can shrink but also have a min width
-            >
-              {`${playerType[0]}${index + 1}`}
-            </ToggleButton>
-          ))}
-        </ToggleButtonGroup>
-      )}
+      {/* Removed ToggleButtonGroup for range selection */}
       
       <Plot
         data={[
@@ -300,8 +301,8 @@ export const StrategyPlotDisplay: React.FC<StrategyPlotDisplayProps> = ({
         ]}
         layout={{
           ...commonPlotLayout,
-          width: (windowInnerWidth - DRAWER_WIDTH - 200) / 3, // Adjusted for typical usage
-          height: 300, // Or make height dynamic/prop
+          width: (windowInnerWidth - DRAWER_WIDTH - 200) / 2, // Adjusted for typical usage
+          height: 160, // Or make height dynamic/prop
           xaxis: {
             automargin: true,
             tickfont: { size: 9 },

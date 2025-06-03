@@ -79,7 +79,7 @@ export const ConditionalEVMatrixDisplay: React.FC<ConditionalEVMatrixDisplayProp
   });
 
   return (
-    <Box sx={{ width: '100%', py: 2 }}>
+    <Box sx={{ width: '100%' }}>
       <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
         Conditionals
         <Tooltip title="Conditional EV and Joint Probability for each Hero range vs Villain range matchup. Click for more info.">

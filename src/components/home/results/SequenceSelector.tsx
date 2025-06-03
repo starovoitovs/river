@@ -144,7 +144,7 @@ export const SequenceSelector: React.FC<SequenceSelectorProps> = ({
         </Box>
       )}
       </Paper>
-      <Typography variant="caption" display="block" sx={{ textAlign: 'left' }}>
+      <Typography variant="caption" display="block" sx={{ textAlign: 'left', mb: 1.5 }}>
           Unconditional Action Sequence Probability: {overallSequenceProbability.toFixed(4)}
           {overallSequenceProbability === 0 && selectedSequence.length > 0 && " (Impossible Sequence)"}
       </Typography>
