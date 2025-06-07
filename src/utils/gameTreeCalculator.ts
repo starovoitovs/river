@@ -1,12 +1,13 @@
 import type { GameState, GameTreeNode } from '../types';
 import type { ParsedPlayerStrategy, ActionStep, PokerAction, ParsedHeroRangeStrategy, ParsedVillainRangeStrategy } from './strategySequenceHelper';
 import { getAvailablePokerActions, analyzeSequence } from './strategySequenceHelper';
+import { GAME_TREE_PRUNING_THRESHOLD } from '../components/home/homeConstants';
 
 interface GameTreeContext {
   currentSequence: ActionStep[];
   currentPlayer: 'Hero' | 'Villain';
   conditionalProbSoFar: number;
-  overallProbSoFar: number;
+  overallProbSoFar: number; // Probability of reaching this node from the tree root (considering global conditioning)
   depth: number;
   heroRangePriors: number[]; // Original P(Hm)
   villainRangePriors: number[]; // Original P(Vn)
@@ -16,6 +17,7 @@ interface GameTreeContext {
   maxDepth: number;
   conditionedHeroRangeIndex?: number;
   conditionedVillainRangeIndex?: number;
+  isBranchTheOnlyOption?: boolean; // Was this branch the only option from its parent?
 }
 
 function getPlannedActionForRange(
@@ -144,15 +146,22 @@ function buildTreeRecursive(ctx: GameTreeContext): GameTreeNode[] {
   const nodes: GameTreeNode[] = [];
   const potState = analyzeSequence(ctx.currentSequence);
 
+  // Pruning Check: If the probability of reaching this current node (ctx.overallProbSoFar)
+  // is below the threshold, and this wasn't the only way to get here from its parent,
+  // and it's not the root of the tree, then prune this entire branch.
+  if (ctx.depth > 0 && // Don't prune the root node itself based on this
+      !ctx.isBranchTheOnlyOption &&
+      ctx.overallProbSoFar < GAME_TREE_PRUNING_THRESHOLD) {
+    return []; // Prune this branch
+  }
+
   if (ctx.depth >= ctx.maxDepth || potState.isBettingClosed) {
-    return [];
+    return []; // Terminal condition due to depth or game state
   }
 
   const availableActions = getAvailablePokerActions(ctx.currentSequence, ctx.currentPlayer, ctx.gameState.maxActions, 3);
-
   let sumOfProbsForNormalization = 0;
   const preliminaryNodes: (GameTreeNode & { rawProb: number })[] = [];
-
 
   for (const action of availableActions) {
     const activeConditionedIndex = ctx.currentPlayer === 'Hero' ? ctx.conditionedHeroRangeIndex : ctx.conditionedVillainRangeIndex;
@@ -162,99 +171,83 @@ function buildTreeRecursive(ctx: GameTreeContext): GameTreeNode[] {
       action,
       ctx.currentSequence,
       ctx.currentPlayer === 'Hero' ? ctx.allParsedHeroStrategies : ctx.allParsedVillainStrategies,
-      ctx.currentPlayer === 'Hero' ? ctx.heroRangePriors : ctx.villainRangePriors, // Pass original priors
+      ctx.currentPlayer === 'Hero' ? ctx.heroRangePriors : ctx.villainRangePriors,
       ctx.gameState,
-      activeConditionedIndex 
+      activeConditionedIndex
     );
 
-    if (actionProb < 1e-9 && availableActions.length > 1) continue; 
+    // Keep actions even if very low probability, normalization will handle it.
+    // Pruning is now handled at the branch level (overallProbSoFar).
+    // We still filter out actions that are essentially zero prob if there are other options.
+    if (actionProb < 1e-9 && availableActions.length > 1) continue;
     
     sumOfProbsForNormalization += actionProb;
-    preliminaryNodes.push({ 
-        actionName: `${ctx.currentPlayer[0]}: ${action}`, 
+    preliminaryNodes.push({
+        actionName: `${ctx.currentPlayer[0]}: ${action}`,
         conditionalProbability: 0, // Will be normalized
-        rawProb: actionProb, 
-        player: ctx.currentPlayer, 
-        children: [] 
+        rawProb: actionProb,
+        player: ctx.currentPlayer,
+        children: []
     });
   }
   
-  if (sumOfProbsForNormalization === 0 && preliminaryNodes.length > 0) {
-      // Avoid division by zero if all rawProbs are zero (e.g. end of a line not perfectly handled by getActionProbability)
-      // Distribute equally among non-zero options or just take first if all zero (though this state should be rare)
+  // If no preliminary nodes were generated (e.g., all actions were < 1e-9 and there was more than one), return empty.
+  if (preliminaryNodes.length === 0) {
+    return [];
+  }
+
+  // Normalize probabilities for the children of the current node
+  if (sumOfProbsForNormalization === 0) {
+      // This case should be rare if preliminaryNodes.length > 0 and actionProb >= 1e-9 filter is working.
+      // If it happens, distribute equally.
       const numNodes = preliminaryNodes.length;
-      preliminaryNodes.forEach(node => node.conditionalProbability = 1/numNodes);
-  } else if (sumOfProbsForNormalization > 0) {
+      preliminaryNodes.forEach(node => node.conditionalProbability = 1 / numNodes);
+  } else {
       preliminaryNodes.forEach(node => node.conditionalProbability = node.rawProb / sumOfProbsForNormalization);
   }
 
-
-  // Filter preliminaryNodes based on their conditional probability before full node construction
-  // This ensures that the normalization sum is based on branches that will actually be shown.
-  const filteredPreliminaryNodes = preliminaryNodes.filter(pNode => {
-    // Normalize the raw probability to get the conditional probability for this specific branch
-    const conditionalProb = sumOfProbsForNormalization > 0 ? pNode.rawProb / sumOfProbsForNormalization : (1 / preliminaryNodes.length);
-    // The overall probability of *this specific branch occurring from the root of the current tree view*
-    const pathOverallProb = ctx.overallProbSoFar * conditionalProb;
-    // Prune if this path's contribution to the current tree's total probability is less than 0.1%
-    // unless it's the only available action (in which case, show it even if low prob)
-    return (pathOverallProb >= 0.001 || preliminaryNodes.length === 1);
-  });
-
-  // Re-calculate sumOfProbsForNormalization based on filtered nodes for accurate conditional probabilities
-  const newSumOfProbsForNormalization = filteredPreliminaryNodes.reduce((sum, node) => sum + node.rawProb, 0);
-
-  for (const pNode of filteredPreliminaryNodes) {
-    // Calculate the final conditional probability for this node
-    let finalConditionalProb: number;
-    if (newSumOfProbsForNormalization === 0 && filteredPreliminaryNodes.length > 0) {
-        finalConditionalProb = 1 / filteredPreliminaryNodes.length;
-    } else if (newSumOfProbsForNormalization > 0) {
-        finalConditionalProb = pNode.rawProb / newSumOfProbsForNormalization;
-    } else { // No nodes left or all rawProbs were zero
-        continue;
-    }
-    
-    // if(finalConditionalProb < 1e-9 && filteredPreliminaryNodes.length > 1) continue; // Already handled by pathOverallProb check essentially
+  // Now, iterate over all preliminary nodes (children actions) that have a non-zero conditional probability.
+  // The previous filtering based on pathOverallProb for each child is removed.
+  for (const pNode of preliminaryNodes) {
+    // If a node's conditional probability after normalization is effectively zero, skip it.
+    // This can happen if sumOfProbsForNormalization was > 0 but this pNode.rawProb was extremely small.
+    if (pNode.conditionalProbability < 1e-9 && preliminaryNodes.length > 1) continue;
 
     const newSequence: ActionStep[] = [...ctx.currentSequence, { player: ctx.currentPlayer, action: pNode.actionName.split(': ')[1] as PokerAction }];
-    const pathProbGivenRootContext = ctx.overallProbSoFar * finalConditionalProb;
+    
+    // The overall probability of reaching this child node from the tree root.
+    const childOverallProbSoFar = ctx.overallProbSoFar * pNode.conditionalProbability;
 
     const childNode: GameTreeNode = {
       actionName: pNode.actionName,
-      conditionalProbability: finalConditionalProb,
-      overallProbability: undefined,
+      conditionalProbability: pNode.conditionalProbability,
+      overallProbability: undefined, // Will be set if it becomes a terminal node in the displayed tree
       player: pNode.player,
       children: [],
     };
-
-    // Only recurse if the path probability is significant enough
-    // This check is slightly redundant due to the earlier filter, but acts as a safeguard
-    // and ensures we don't build out very deep negligible branches.
-    // The primary pruning is the filter on preliminaryNodes.
-    // if (pathProbGivenRootContext < 0.001 && filteredPreliminaryNodes.length > 1) {
-    //    childNode.isTerminal = true; // Mark as terminal if we prune children
-    //    childNode.overallProbability = pathProbGivenRootContext;
-    //    nodes.push(childNode);
-    //    continue;
-    // }
-
 
     const nextPlayer = ctx.currentPlayer === 'Hero' ? 'Villain' : 'Hero';
     const children = buildTreeRecursive({
       ...ctx,
       currentSequence: newSequence,
       currentPlayer: nextPlayer,
-      conditionalProbSoFar: finalConditionalProb,
-      overallProbSoFar: pathProbGivenRootContext,
+      conditionalProbSoFar: pNode.conditionalProbability, // This is P(Child | Parent)
+      overallProbSoFar: childOverallProbSoFar,          // This is P(Child | Root)
       depth: ctx.depth + 1,
+      isBranchTheOnlyOption: preliminaryNodes.length === 1, // Pass if this child was the only option
     });
 
     childNode.children = children;
     const endPotState = analyzeSequence(newSequence);
+
+    // A node becomes terminal in the displayed tree if:
+    // 1. It has no children (either naturally or because its children's branches were pruned).
+    // 2. Betting is closed.
+    // 3. Max depth is reached.
     if (children.length === 0 || endPotState.isBettingClosed || (ctx.depth + 1 >= ctx.maxDepth) ) {
         childNode.isTerminal = true;
-        childNode.overallProbability = pathProbGivenRootContext;
+        // The overallProbability displayed for a terminal node is its probability from the root of the tree.
+        childNode.overallProbability = childOverallProbSoFar;
     }
     nodes.push(childNode);
   }
