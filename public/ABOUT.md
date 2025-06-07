@@ -127,7 +127,7 @@ The first field corresponds to relative frequencies, the second corresponds to t
 Algorithm uses fictitious play to learn the optimal strategy, for which one can specify:
 * maximum number of iterations
 * learning rate
-* convergence threshold
+* convergence threshold (note that this is in terms exploitability of each player, which is in terms of EV, so scales with pot size)
 
 If the algorithm has not converged, you can examine convergence plots below the game matrix.
 

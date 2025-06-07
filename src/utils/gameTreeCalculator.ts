@@ -28,13 +28,26 @@ function getPlannedActionForRange(
 
     if (player === 'Hero') {
         const heroRangeStrat = rangeStrategy as ParsedHeroRangeStrategy;
+        const heroActionsInSequenceSoFar = currentSequence.filter(s => s.player === 'Hero').map(s => s.action);
+
+        // Validate that the strategy's prefix matches Hero's actions already taken in the current sequence
+        for (let k = 0; k < actionsTakenByPlayerThisStreet; k++) {
+            if (k >= heroRangeStrat.actionSequence.length || // Strategy is shorter than actions taken
+                heroRangeStrat.actionSequence[k] !== heroActionsInSequenceSoFar[k]) { // Or action mismatches
+                return undefined; // This pure strategy for this range is not consistent with the game flow
+            }
+        }
+
+        // If the prefix is consistent, and there are more actions in this strategy for the current street
         if (actionsTakenByPlayerThisStreet < heroRangeStrat.actionSequence.length) {
             const nextAction = heroRangeStrat.actionSequence[actionsTakenByPlayerThisStreet];
+            // Check if this planned next action is actually available given the current game state
             const availableActions = getAvailablePokerActions(currentSequence, player, maxActionsOnStreet, 3);
             if (availableActions.includes(nextAction)) {
                 return nextAction;
             }
         }
+        // If strategy ends here, or next planned action isn't available, no action is returned from this path (implicitly returns undefined).
     } else { // Villain
         const villainRangeStrat = rangeStrategy as ParsedVillainRangeStrategy;
         
