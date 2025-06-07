@@ -51,12 +51,11 @@ export const validateFixedStrategyInput = (
   }
 
   const lines = input.trim().split('\n');
-  const parsedItems: ParsedFixedStrategyItem[] = [];
-  const strategyNames = new Set<string>();
+  const strategyFrequencies: { [key: string]: number } = {};
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim();
-    if (line === "") continue;
+    if (line === "" || line.startsWith('#')) continue; // Ignore empty lines and comments
 
     const firstCommaIndex = line.indexOf(',');
     if (firstCommaIndex === -1) {
@@ -67,8 +66,8 @@ export const validateFixedStrategyInput = (
     let nameStr = line.substring(firstCommaIndex + 1).trim();
 
     const frequency = Number(freqStr);
-    if (isNaN(frequency) || frequency <= 0) {
-      return [false, `Line ${i + 1}: Frequency must be a positive number. Found "${freqStr}"`, []];
+    if (isNaN(frequency) || frequency < 0) { // Allow 0 frequency, check for negative
+      return [false, `Line ${i + 1}: Frequency must be a non-negative number. Found "${freqStr}"`, []];
     }
 
     // Remove surrounding quotes from the strategy name if present
@@ -85,16 +84,29 @@ export const validateFixedStrategyInput = (
       return [false, `Line ${i + 1}: Strategy "${strategyName}" is not a valid strategy for the current settings.`, []];
     }
 
-    if (strategyNames.has(strategyName)) {
-      return [false, `Line ${i + 1}: Strategy "${strategyName}" is duplicated.`, []];
+    // Sum frequencies for duplicate strategies
+    if (frequency > 0) { // Only add/update if frequency is greater than 0
+        strategyFrequencies[strategyName] = (strategyFrequencies[strategyName] || 0) + frequency;
     }
-    strategyNames.add(strategyName);
-    const index = availableStrategies.indexOf(strategyName); // This should always be found due to the check above
-    parsedItems.push({ frequency, name: strategyName, index });
   }
 
-  if (parsedItems.length === 0 && input.trim() !== "") {
-      return [false, "No valid strategies found in the input.", []];
+  const parsedItems: ParsedFixedStrategyItem[] = [];
+  for (const strategyName in strategyFrequencies) {
+    const frequency = strategyFrequencies[strategyName];
+    // This check is technically redundant now due to the `if (frequency > 0)` above,
+    // but kept for clarity or future changes where 0-frequency items might be processed differently before this point.
+    if (frequency > 0) {
+      const index = availableStrategies.indexOf(strategyName);
+      // Index should always be found due to the earlier check
+      if (index !== -1) {
+        parsedItems.push({ frequency, name: strategyName, index });
+      }
+    }
+  }
+  
+  if (parsedItems.length === 0 && input.trim().split('\n').filter(line => line.trim() !== "" && !line.trim().startsWith('#')).length > 0) {
+      // Check if there was actual input after filtering comments and empty lines
+      return [false, "No valid strategies with positive frequency found in the input.", []];
   }
   
   // Normalize frequencies if needed (though solveGame might handle this)
