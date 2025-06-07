@@ -218,6 +218,12 @@ function buildTreeRecursive(ctx: GameTreeContext): GameTreeNode[] {
     // The overall probability of reaching this child node from the tree root.
     const childOverallProbSoFar = ctx.overallProbSoFar * pNode.conditionalProbability;
 
+    // If this child's own path from the root is too improbable, AND it's not the only option,
+    // then don't create or display this child node.
+    if (childOverallProbSoFar < GAME_TREE_PRUNING_THRESHOLD && preliminaryNodes.length > 1) {
+        continue;
+    }
+
     const childNode: GameTreeNode = {
       actionName: pNode.actionName,
       conditionalProbability: pNode.conditionalProbability,
