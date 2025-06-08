@@ -66,7 +66,9 @@ export const StrategyPlotDisplay: React.FC<StrategyPlotDisplayProps> = ({
     filteredPureStrategies: ParsedPlayerStrategy[], // Input is now parsed and potentially filtered
     rangeIdx: number,
     playerChar: 'H' | 'V',
-    actionsForPlayer: string[] // All possible actions for this player type (e.g. ["ch","be"] or ["ch-fo", "ch-ca"...])
+    actionsForPlayer: string[], // All possible actions for this player type (e.g. ["ch","be"] or ["ch-fo", "ch-ca"...])
+    // New parameter for filtering by action sequence for the specific range
+    actionSequenceFilterForRange?: ReadonlyArray<{ player: 'Hero' | 'Villain'; action: string; }>
   ): { marginalProbs: number[], marginalLabels: string[] } => {
     const marginalActionProbs = new Map<string, number>(); // Stores sum of probabilities for each action string (e.g. "ch-ca")
     let totalProbOfStrategiesInvolvingThisRange = 0;
@@ -79,6 +81,51 @@ export const StrategyPlotDisplay: React.FC<StrategyPlotDisplayProps> = ({
       );
 
       if (rangeSpecificStrategy) {
+        // Apply actionSequenceFilterForRange if provided
+        if (actionSequenceFilterForRange && actionSequenceFilterForRange.length > 0) {
+          let currentRangeActionsFromStrategy: string[]; // Actions for THIS specific range part of the pure strategy.
+
+          if (playerType === 'Hero') {
+            currentRangeActionsFromStrategy = (rangeSpecificStrategy as ParsedHeroRangeStrategy).actionSequence; // These are full actions
+          } else { // Villain
+            // Get the abbreviated action sequence string like "ch-ca" from the rawLabel for this specific range
+            const villainRangePartLabel = pureStrategy.rawLabel.split(',').find(p => p.startsWith(`${playerChar}${rangeIdx + 1}:`));
+            if (villainRangePartLabel) {
+              const abbreviatedActionSeqStr = villainRangePartLabel.substring(villainRangePartLabel.indexOf(':') + 1);
+              currentRangeActionsFromStrategy = abbreviatedActionSeqStr.split('-'); // Abbreviated actions, e.g., ["ch", "ca"]
+            } else {
+              currentRangeActionsFromStrategy = []; // Should not happen if rangeSpecificStrategy was found
+            }
+          }
+
+          let isConsistentWithFilter = true;
+          if (actionSequenceFilterForRange.length > currentRangeActionsFromStrategy.length) {
+            isConsistentWithFilter = false;
+          } else {
+            for (let i = 0; i < actionSequenceFilterForRange.length; i++) {
+              const filterAction = actionSequenceFilterForRange[i].action; // Full action from filter
+              const rangePartAction = currentRangeActionsFromStrategy[i]; // Full for Hero, Abbreviated for Villain
+
+              let comparableFilterAction = filterAction;
+              // If playerType is Villain, the rangePartAction is abbreviated, so abbreviate the filterAction for comparison.
+              // For Hero, both are full actions.
+              if (playerType === 'Villain') {
+                comparableFilterAction = abbreviateAction(filterAction, 'Villain');
+              }
+
+              if (rangePartAction !== comparableFilterAction) {
+                isConsistentWithFilter = false;
+                break;
+              }
+            }
+          }
+
+          if (!isConsistentWithFilter) {
+            return; // Skip this pureStrategy for this range's marginal calculation if it doesn't match the action sequence filter
+          }
+        }
+
+        // Original logic for extracting actionString and updating marginalActionProbs
         let actionString: string;
         if (playerType === 'Hero') {
           actionString = (rangeSpecificStrategy as ParsedHeroRangeStrategy).actionSequence.join('-');
@@ -142,11 +189,14 @@ export const StrategyPlotDisplay: React.FC<StrategyPlotDisplayProps> = ({
 
     let strategiesToConsider: ParsedPlayerStrategy[] = [...allParsedPlayerStrategies];
 
+    // Define playerSpecificActionsInSequence in a scope accessible by the call to calculateMarginalStrategyForDisplay
+    let playerSpecificActionsInSequence: ReadonlyArray<{ player: 'Hero' | 'Villain'; action: string; }> | undefined = undefined;
+
     // 1. Filter by selectedActionSequence
     if (selectedActionSequence && selectedActionSequence.length > 0) {
-      const playerSpecificActionsInSequence = selectedActionSequence.filter(step => step.player === playerType);
+      playerSpecificActionsInSequence = selectedActionSequence.filter(step => step.player === playerType);
 
-      if (playerSpecificActionsInSequence.length > 0) {
+      if (playerSpecificActionsInSequence && playerSpecificActionsInSequence.length > 0) {
         strategiesToConsider = allParsedPlayerStrategies.filter((pureStrategy: ParsedPlayerStrategy) => {
           // A pure strategy is kept if AT LEAST ONE of its range strategies
           // for the current playerType is consistent with playerSpecificActionsInSequence.
@@ -156,12 +206,16 @@ export const StrategyPlotDisplay: React.FC<StrategyPlotDisplayProps> = ({
             if (playerType === 'Hero') {
               actionsOfRangeToMatch = (rangeStrat as ParsedHeroRangeStrategy).actionSequence;
               // Check consistency for Hero range
+              // Add null check for playerSpecificActionsInSequence
+              if (!playerSpecificActionsInSequence) return false; // Should not happen due to outer check, but satisfies TS
               if (playerSpecificActionsInSequence.length > actionsOfRangeToMatch.length) return false;
               for (let i = 0; i < playerSpecificActionsInSequence.length; i++) {
                 if (actionsOfRangeToMatch[i] !== playerSpecificActionsInSequence[i].action) return false;
               }
               return true; // This Hero range is consistent
             } else { // PlayerType is Villain
+              // Add null check for playerSpecificActionsInSequence
+              if (!playerSpecificActionsInSequence) return false; // Should not happen due to outer check, but satisfies TS
               const villainRangeStrategy = rangeStrat as ParsedVillainRangeStrategy;
               const path1Actions = villainRangeStrategy.ifHeroChecks;
               const path2Actions = villainRangeStrategy.ifHeroBets;
@@ -169,7 +223,7 @@ export const StrategyPlotDisplay: React.FC<StrategyPlotDisplayProps> = ({
               let path2Matches = true;
 
               // Check consistency with ifHeroChecks path
-              if (playerSpecificActionsInSequence.length > path1Actions.length) {
+              if (playerSpecificActionsInSequence.length > path1Actions.length) { // playerSpecificActionsInSequence is checked above
                 path1Matches = false;
               } else {
                 for (let i = 0; i < playerSpecificActionsInSequence.length; i++) {
@@ -182,7 +236,7 @@ export const StrategyPlotDisplay: React.FC<StrategyPlotDisplayProps> = ({
               if (path1Matches) return true; // Consistent via ifHeroChecks path
 
               // Check consistency with ifHeroBets path
-              if (playerSpecificActionsInSequence.length > path2Actions.length) {
+              if (playerSpecificActionsInSequence.length > path2Actions.length) { // playerSpecificActionsInSequence is checked above
                 path2Matches = false;
               } else {
                 for (let i = 0; i < playerSpecificActionsInSequence.length; i++) {
@@ -225,7 +279,8 @@ export const StrategyPlotDisplay: React.FC<StrategyPlotDisplayProps> = ({
         strategiesToConsider,
         activeConditioningIndexForThisPlot,
         playerType === 'Hero' ? 'H' : 'V',
-        playerActions
+        playerActions,
+        playerSpecificActionsInSequence // Pass the action sequence filter
       );
       currentProbs = marginalData.marginalProbs;
       currentLabels = marginalData.marginalLabels;
